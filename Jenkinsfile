@@ -82,7 +82,8 @@ pipeline {
               -i ansible/hosts.ini \
               ansible/playbook.yaml \
               --private-key "$SSH_KEY" \
-              -u root -vvv
+              -u root -vvv \
+              --ssh-extra-args="-o UserKnownHostsFile=/var/lib/jenkins/.ssh/known_hosts"
           '''
         }
       }
