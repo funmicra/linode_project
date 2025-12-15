@@ -82,7 +82,7 @@ pipeline {
               -i ansible/hosts.ini \
               ansible/playbook.yaml \
               --private-key "$SSH_KEY" \
-              -u root
+              -u root -vvv
           '''
         }
       }
