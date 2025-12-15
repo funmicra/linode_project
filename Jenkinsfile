@@ -120,6 +120,7 @@ pipeline {
                     sh '''
                     # Read the public key into a variable safely
                     SSH_KEY_CONTENT=$(<"$PUBKEY_FILE")
+                    echo "$SSH_KEY_CONTENT"
 
                     # Run ansible-playbook with safe variables
                     ansible-playbook ansible/playbook.yaml \
