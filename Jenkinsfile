@@ -75,7 +75,7 @@ pipeline {
             steps {
                 script {
                     def ips = sh(
-                        script: 'terraform -chdir=terraform output -raw instance_ips',
+                        script: 'terraform -chdir=terraform output -raw private_ips',
                         returnStdout: true
                     ).trim().split("\\s+")
 
