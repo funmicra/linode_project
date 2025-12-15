@@ -46,6 +46,26 @@ pipeline {
       }
     }
 
+    stage('Update Ansible Inventory') {
+        steps {
+            script {
+            // Get the gateway public IP from Terraform output
+            def gateway_ip = sh(
+                script: "terraform -chdir=terraform output -raw gateway_public_ip",
+                returnStdout: true
+            ).trim()
+
+            echo "Gateway IP is ${gateway_ip}"
+
+            // Update hosts.ini dynamically
+            sh """
+                sed -i '/\\[gateway\\]/,+1 s/ansible_host=.*/ansible_host=${gateway_ip}/' ansible/hosts.ini
+                sed -i "/\\[private:vars\\]/,+1 s/ProxyJump=root@.*/ProxyJump=root@${gateway_ip}/" ansible/hosts.ini
+            """
+            }
+        }
+    }
+
     stage('Ansible Configure') {
       environment {
         ANSIBLE_HOST_KEY_CHECKING = "False"
