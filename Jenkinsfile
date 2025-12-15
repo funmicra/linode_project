@@ -114,21 +114,25 @@ pipeline {
             }
         }
 
-        stage('Ansible') {
+        stage('Create user') {
             steps {
                 withCredentials([file(credentialsId: 'ansible_ssh_pub_key', variable: 'PUBKEY_FILE')]) {
                     sh '''
-                    # Read the public key into a variable safely
+                    # Read the public key
                     SSH_KEY_CONTENT=$(cat "$PUBKEY_FILE")
+                    echo "$SSH_KEY_CONTENT"
 
-                    # Run ansible-playbook with safe variables
+                    # Run ansible-playbook safely with quotes
                     ansible-playbook ansible/playbook.yaml \
-                        -e "ssh_pub_key=$SSH_KEY_CONTENT" 
+                        -e "ssh_pub_key=\\"$SSH_KEY_CONTENT\\"" \
+                        -i ansible/hosts.ini \
+                        -u root \
                         -vv
                     '''
                 }
             }
         }
+
 
 
     }
