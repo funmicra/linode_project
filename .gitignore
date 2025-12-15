@@ -1,0 +1,84 @@
+# =========================
+# Terraform
+# =========================
+.terraform/
+.terraform.lock.hcl
+terraform.tfstate
+terraform.tfstate.*
+crash.log
+crash.*.log
+*.tfplan
+override.tf
+override.tf.json
+*_override.tf
+*_override.tf.json
+
+
+# Terraform variable files (often contain secrets)
+*.tfvars
+*.tfvars.json
+
+# =========================
+# Ansible
+# =========================
+*.retry
+ansible.log
+
+# Vault / secrets
+vault.yml
+vault.yaml
+*.vault
+.secrets/
+
+# Dynamic or generated inventory
+inventory.ini
+inventory/
+inventory_*
+
+# =========================
+# SSH / Credentials
+# =========================
+*.pem
+*.key
+id_rsa
+id_rsa.pub
+id_ed25519
+id_ed25519.pub
+known_hosts
+
+# =========================
+# Jenkins / CI
+# =========================
+.jenkins/
+workspace/
+jenkins_home/
+*.log
+
+# =========================
+# OS / Editor noise
+# =========================
+.DS_Store
+Thumbs.db
+*.swp
+*.swo
+*~
+.idea/
+.vscode/
+.history/
+
+# =========================
+# Python (Ansible helpers, scripts)
+# =========================
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+.venv/
+venv/
+pip-wheel-metadata/
+
+# =========================
+# Misc safety net
+# =========================
+.env
+.env.*

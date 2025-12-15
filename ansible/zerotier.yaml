@@ -1,0 +1,37 @@
+---
+- name: Install and join ZeroTier on all hosts
+  hosts: all
+  become: yes
+  vars:
+    zerotier_network_id: "d5e5fb653729bb5b"   # Replace with your ZeroTier network ID
+
+  tasks:
+    - name: Install prerequisites
+      apt:
+        name: curl
+        state: present
+        update_cache: yes
+
+    - name: Download and run ZeroTier install script
+      shell: |
+        curl -s https://install.zerotier.com | bash
+      args:
+        creates: /var/lib/zerotier-one
+
+    - name: Ensure ZeroTier service is running
+      service:
+        name: zerotier-one
+        state: started
+        enabled: yes
+
+    - name: Join ZeroTier network
+      shell: zerotier-cli join {{ zerotier_network_id }}
+      register: join_result
+      changed_when: "'200 join OK' in join_result.stdout"
+
+    - name: Show ZeroTier status
+      shell: zerotier-cli info
+      register: zt_status
+
+    - debug:
+        msg: "{{ zt_status.stdout }}"
