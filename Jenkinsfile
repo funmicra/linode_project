@@ -108,25 +108,14 @@ pipeline {
             }
         }
 
-        stage('Ansible Configure') {
-            environment {
-                ANSIBLE_HOST_KEY_CHECKING = "False"
-            }
+        stage('Ansible') {
             steps {
-                withCredentials([
-                    sshUserPrivateKey(
-                        credentialsId: 'ANSIBLE_SSH_KEY',
-                        keyFileVariable: 'SSH_KEY',
-                        usernameVariable: 'SSH_USER'
-                    ),
-                    string(credentialsId: 'ansible_new_user_password', variable: 'NEW_PASSWORD'),
-                    file(credentialsId: 'ansible_ssh_pub_key', variable: 'SSH_KEYS_FILE')
-                ]) {
-                    sh """
+                sshagent(['ANSIBLE_SSH_KEY']) {
+                    sh '''
                         ansible-playbook -i ansible/hosts.ini ansible/playbook.yaml \
-                        -u root -vv \
-                        -e "ssh_keys_file=${SSH_KEYS_FILE}"
-                    """
+                        -u root -vv -e "ssh_extra_args='-o StrictHostKeyChecking=no -J root@<gateway-ip>'"
+                    '''
+                    }
                 }
             }
         }
