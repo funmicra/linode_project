@@ -118,16 +118,13 @@ pipeline {
             steps {
                 withCredentials([file(credentialsId: 'ansible_ssh_pub_key', variable: 'PUBKEY_FILE')]) {
                     sh '''
-                    # Read the public key
-                    SSH_KEY_CONTENT=$(cat "$PUBKEY_FILE")
-                    echo "$SSH_KEY_CONTENT"
+                        SSH_KEY_CONTENT=$(tr -d '\n' < "$PUBKEY_FILE")
 
-                    # Run ansible-playbook safely with quotes
-                    ansible-playbook ansible/playbook.yaml \
-                        -e "ssh_pub_key=\\"$SSH_KEY_CONTENT\\"" \
-                        -i ansible/hosts.ini \
-                        -u root \
-                        -vv
+                        ansible-playbook ansible/playbook.yaml \
+                            -e "ssh_pub_key='$SSH_KEY_CONTENT'" \
+                            -i ansible/hosts.ini \
+                            -u root \
+                            -vv
                     '''
                 }
             }
