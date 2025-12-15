@@ -118,7 +118,7 @@ pipeline {
                         ansible-playbook -i ansible/hosts.ini ansible/playbook.yaml \
                         -u root -vv \
                         -e "ssh_extra_args='-o StrictHostKeyChecking=no -J root@${GATEWAY_IP}'" \
-                        -e ssh_pub_key=\"\$(cat ${ansible_ssh_pub_key})\"
+                        -e "ssh_pub_key=${PUBKEY_FILE}"
                         """
                     }
                 }
