@@ -64,6 +64,26 @@ pipeline {
             }
         }
 
+        stage('Update Ansible Inventory') {
+            steps {
+                script {
+                    def gateway_ip = sh(
+                        script: "terraform -chdir=terraform output -raw gateway_public_ip",
+                        returnStdout: true
+                    ).trim()
+
+                    echo "Gateway IP is ${gateway_ip}"
+
+                    sh """
+                        sed -i '/\\[gateway\\]/,+1 s/ansible_host=.*/ansible_host=${gateway_ip}/' ansible/hosts.ini
+                        sed -i "/\\[private:vars\\]/,+1 s/ProxyJump=root@.*/ProxyJump=root@${gateway_ip}/" ansible/hosts.ini
+                    """
+
+                    env.GATEWAY_IP = gateway_ip
+                }
+            }
+        }
+
         stage('Reapply SSH keys') {
             when {
                 expression {
@@ -85,32 +105,11 @@ pipeline {
 
                     // Loop over each IP and add to known_hosts
                     for (ip in ips) {
-                        sh "ssh-keyscan -H ${ip} >> /var/lib/jenkins/.ssh/known_hosts"
+                        sh "ssh-keyscan -o ProxyJump=root@${gateway_ip} -H ${ip} >> /var/lib/jenkins/.ssh/known_hosts || true"
                     }
 
                     // Fix permissions
                     sh "chown -R jenkins:jenkins /var/lib/jenkins/.ssh/"
-                }
-            }
-        }
-
-
-        stage('Update Ansible Inventory') {
-            steps {
-                script {
-                    def gateway_ip = sh(
-                        script: "terraform -chdir=terraform output -raw gateway_public_ip",
-                        returnStdout: true
-                    ).trim()
-
-                    echo "Gateway IP is ${gateway_ip}"
-
-                    sh """
-                        sed -i '/\\[gateway\\]/,+1 s/ansible_host=.*/ansible_host=${gateway_ip}/' ansible/hosts.ini
-                        sed -i "/\\[private:vars\\]/,+1 s/ProxyJump=root@.*/ProxyJump=root@${gateway_ip}/" ansible/hosts.ini
-                    """
-
-                    env.GATEWAY_IP = gateway_ip
                 }
             }
         }
