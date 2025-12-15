@@ -116,22 +116,32 @@ pipeline {
 
         stage('Create user') {
             steps {
-                withCredentials([file(credentialsId: 'ansible_ssh_pub_key', variable: 'PUBKEY_FILE')]) {
+                withCredentials([
+                    sshUserPrivateKey(
+                        credentialsId: 'ANSIBLE_SSH_KEY',
+                        keyFileVariable: 'ANSIBLE_PRIVATE_KEY',
+                        usernameVariable: 'ANSIBLE_USER'
+                    ),
+                    file(
+                        credentialsId: 'ansible_ssh_pub_key',
+                        variable: 'ANSIBLE_PUB_KEY_FILE'
+                    )
+                ]) {
                     sh '''
-                        SSH_KEY_CONTENT=$(tr -d '\n' < "$PUBKEY_FILE")
+                    # Read public key (keep it in one line)
+                    SSH_KEY_CONTENT=$(tr -d '\\n' < "$ANSIBLE_PUB_KEY_FILE")
 
-                        ansible-playbook ansible/playbook.yaml \
-                            -e "ssh_pub_key='$SSH_KEY_CONTENT'" \
-                            -i ansible/hosts.ini \
-                            -u root \
-                            -vv
+                    # Run Ansible with private key for SSH and pass public key to playbook
+                    ansible-playbook ansible/playbook.yaml \
+                        -e "ssh_pub_key='$SSH_KEY_CONTENT'" \
+                        -i ansible/hosts.ini \
+                        -u "$ANSIBLE_USER" \
+                        --private-key "$ANSIBLE_PRIVATE_KEY" \
+                        -vv
                     '''
                 }
             }
         }
-
-
-
     }
 
     post {
