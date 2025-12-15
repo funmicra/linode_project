@@ -110,15 +110,16 @@ pipeline {
 
         stage('Ansible') {
             steps {
-                sshagent(['ANSIBLE_SSH_KEY']) {
-                    withCredentials([file(credentialsId: 'ansible_ssh_pub_key', variable: 'PUBKEY_FILE')]) {
-                        sh """
-                        ansible-playbook -i ansible/hosts.ini ansible/playbook.yaml \
-                            -u root -vv \
-                            -e ssh_extra_args='-o StrictHostKeyChecking=no -J root@${GATEWAY_IP}' \
-                            -e "ssh_pub_key=${PUBKEY_FILE}"
-                        """
-                    }
+                withCredentials([file(credentialsId: 'ansible_ssh_pub_key', variable: 'PUBKEY_FILE')]) {
+                    sh '''
+                    # Read the public key into a variable safely
+                    SSH_KEY_CONTENT=$(cat "$PUBKEY_FILE")
+
+                    # Run ansible-playbook with safe variables
+                    ansible-playbook ansible/playbook.yaml \
+                        -e "ssh_pub_key=$SSH_KEY_CONTENT" \
+                        -vv
+                    '''
                 }
             }
         }
