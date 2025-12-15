@@ -3,8 +3,7 @@ pipeline {
 
   environment {
     TF_IN_AUTOMATION = "true"
-    TF_INPUT         = "false"
-    LINODE_TOKEN     = credentials('LINODE_TOKEN')
+    TF_INPUT        = "false"
     ANSIBLE_HOST_KEY_CHECKING = "False"
   }
 
@@ -12,45 +11,25 @@ pipeline {
 
     stage('Checkout') {
       steps {
-        checkout scm
-      }
-    }
-
-    stage('Terraform Init') {
-      steps {
-        dir('terraform') {
-          sh '''
-            terraform init \
-              -backend=true \
-              -upgrade
-          '''
-        }
-      }
-    }
-
-    stage('Terraform Validate') {
-      steps {
-        dir('terraform') {
-          sh 'terraform validate'
-        }
-      }
-    }
-
-    stage('Terraform Plan') {
-      steps {
-        dir('terraform') {
-          sh '''
-            terraform plan
-          '''
-        }
+        git(
+          url: 'https://github.com/funmicra/linode_project.git',
+          branch: 'master'
+        )
       }
     }
 
     stage('Terraform Apply') {
+      environment {
+        TF_VAR_linode_token  = credentials('LINODE_TOKEN')
+        TF_VAR_ssh_keys_file = "${WORKSPACE}/terraform/ssh.keys"
+      }
       steps {
-        dir('terraform') {
-          sh 'terraform apply -auto-approve'
-        }
+        sh '''
+          cd terraform
+          terraform init
+          terraform plan
+          terraform apply -auto-approve
+        '''
       }
     }
 
@@ -68,6 +47,9 @@ pipeline {
     }
 
     stage('Ansible Configure') {
+      environment {
+        ANSIBLE_HOST_KEY_CHECKING = "False"
+      }
       steps {
         withCredentials([
           sshUserPrivateKey(
@@ -77,8 +59,8 @@ pipeline {
         ]) {
           sh '''
             ansible-playbook \
-              -i ansible/inventory.ini \
-              ansible/site.yml \
+              -i ansible/hosts.ini \
+              ansible/playbook.yaml \
               --private-key "$SSH_KEY" \
               -u root
           '''
@@ -89,10 +71,10 @@ pipeline {
 
   post {
     success {
-      echo 'Infrastructure provisioned and configured successfully. Value delivered.'
+      echo 'Infrastructure provisioned and configured successfully. End-to-end delivery complete.'
     }
     failure {
-      echo 'Pipeline failed. Root cause analysis required.'
+      echo 'Pipeline failed. Inspect Terraform or Ansible stage logs.'
     }
   }
 }
