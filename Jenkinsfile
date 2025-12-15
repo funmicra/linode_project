@@ -19,6 +19,14 @@ pipeline {
     }
 
     stage('Terraform Apply') {
+        when {
+            expression {
+                // Optional: trigger only if commit message contains [INFRA]
+                currentBuild.changeSets.any { cs ->
+                    cs.items.any { it.msg.contains("[INFRA]") }
+                }
+            }
+        }
       environment {
         TF_VAR_linode_token  = credentials('LINODE_TOKEN')
         TF_VAR_ssh_keys_file = "${WORKSPACE}/terraform/ssh.keys"
@@ -128,16 +136,13 @@ pipeline {
         withCredentials([
           sshUserPrivateKey(
             credentialsId: 'ANSIBLE_SSH_KEY',
-            keyFileVariable: 'SSH_KEY'
+            keyFileVariable: 'SSH_KEY',
+            string(credentialsId: 'ansible_new_user_password', variable: 'NEW_PASSWORD'),
+            file(credentialsId: 'ansible_ssh_pub_key', variable: 'SSH_KEYS_FILE')
           )
         ]) {
           sh '''
-            ansible-playbook \
-              -i ansible/hosts.ini \
-              ansible/playbook.yaml \
-              --private-key "$SSH_KEY" \
-              -u root -vv \
-              --ssh-extra-args="-o UserKnownHostsFile=/var/lib/jenkins/.ssh/known_hosts"
+            ansible-playbook -i ansible/hosts.ini ansible/playbook.yaml -u root -vv -e "new_password=${NEW_PASSWORD} ssh_keys_file=${SSH_KEYS_FILE}"
           '''
         }
       }

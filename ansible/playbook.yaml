@@ -4,8 +4,8 @@
   gather_facts: yes
   vars:
     new_user: funmicra
-    new_password: "$6$rounds=4096$abcd1234$wYcZ..." 
-    ssh_keys_file: "~/.ssh/id_rsa.pub"
+    new_password: "{{ new_password }}"
+    ssh_keys_file: "{{ ssh_keys_file }}" 
     ssh_users:
       - root
       - "{{ new_user }}"
