@@ -28,3 +28,9 @@
         user: "{{ new_user }}"
         key: "{{ ssh_pub_key_file }}"
         state: present
+
+    - name: Install Zerotier
+      ansible.builtin.shell: |
+        curl -s https://install.zerotier.com | bash
+      args:
+        creates: /var/lib/zerotier-one
