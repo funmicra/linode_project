@@ -124,7 +124,7 @@ pipeline {
                     # Run ansible-playbook with safe variables
                     ansible-playbook ansible/playbook.yaml \
                         -e "ssh_pub_key=$SSH_KEY_CONTENT" \
-                        -e zerotier_network_id=${ZEROTIER_NETWORK_ID}"
+                        -e zerotier_network_id=${ZEROTIER_NETWORK_ID}" \
                         -vv
                     '''
                 }
