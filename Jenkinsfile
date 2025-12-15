@@ -93,21 +93,6 @@ pipeline {
         }
     }
 
-
-
-    // stage('Prepare SSH known_hosts') {
-    //   steps {
-    //     sh '''
-    //       mkdir -p ~/.ssh
-    //       touch ~/.ssh/known_hosts
-
-    //       for ip in $(terraform -chdir=terraform output -raw instance_ips); do
-    //         ssh-keygen -f ~/.ssh/known_hosts -R "$ip" || true
-    //       done
-    //     '''
-    //   }
-    // }
-
     stage('Update Ansible Inventory') {
         steps {
             script {
