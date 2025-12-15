@@ -10,6 +10,16 @@ output "private_ips" {
   ]
 }
 
+output "gateway_id" {
+  value = linode_instance.gateway.id
+}
+
+output "instance_ids" {
+  value = [
+    for vm in linode_instance.private : vm.id
+  ]
+}
+
 
 
 
