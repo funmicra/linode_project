@@ -33,6 +33,36 @@ pipeline {
       }
     }
 
+    stage('Generate Terraform Import Commands') {
+        steps {
+            script {
+            echo "Generating Terraform import commands for local Terraform configuration..."
+
+            // Get VM IDs and names from Terraform outputs
+            def vm_ids = sh(
+                script: "terraform -chdir=terraform output -json instance_ids",
+                returnStdout: true
+            ).trim()
+
+            // Convert JSON array to list
+            def parsed = readJSON text: vm_ids
+
+            parsed.eachWithIndex { id, idx ->
+                def resource_name = "linode_instance.private[${idx}]"
+                echo "terraform import ${resource_name} ${id}"
+            }
+
+            // Gateway VM import
+            def gateway_id = sh(
+                script: "terraform -chdir=terraform output -raw gateway_id",
+                returnStdout: true
+            ).trim()
+            echo "terraform import linode_instance.gateway ${gateway_id}"
+            }
+        }
+    }
+
+
     stage('Prepare SSH known_hosts') {
       steps {
         sh '''
