@@ -1,194 +1,30 @@
 ---
-- name: Configure gateway host
-  hosts: gateway
-  gather_facts: yes
+- name: Bootstrap all servers
+  hosts: all
+  become: yes
   vars:
     new_user: funmicra
-    new_password: "{{ new_password }}"
-    ssh_keys_file: "{{ ssh_keys_file }}" 
-    ssh_users:
-      - root
-      - "{{ new_user }}"
+    ssh_pub_key_file: "{{ lookup('file', 'ssh_keys/funmicra.pub') }}"
+
   tasks:
-
-    - name: Determine which user can SSH
-      block:
-        - name: Try connecting with a user
-          ansible.builtin.ping:
-          vars:
-            ansible_user: "{{ item }}"
-          loop: "{{ ssh_users }}"
-          register: ping_result
-          ignore_errors: yes
-          until: ping_result is success
-          retries: 2
-          delay: 5
-
-        - name: Set working SSH user
-          set_fact:
-            ansible_user: "{{ item }}"
-          when: ping_result.results[loop.index0].failed == false
-          loop: "{{ ssh_users }}"
-          loop_control:
-            index_var: loop_index
-          run_once: true
-
-    - name: Confirm which user is used
-      ansible.builtin.debug:
-        msg: "Using SSH user {{ ansible_user }}"
-
-    # Existing tasks, now all using become: yes if necessary
-    - name: Ensure the user exists on gateway
-      user:
+    - name: Create new user
+      ansible.builtin.user:
         name: "{{ new_user }}"
-        password: "{{ new_password }}"
         shell: /bin/bash
-        create_home: yes
-        update_password: on_create
-      become: yes
+        groups: sudo
+        append: yes
+        state: present
 
-    - name: Add user to sudoers on gateway
-      copy:
-        dest: "/etc/sudoers.d/{{ new_user }}"
-        content: "{{ new_user }} ALL=(ALL) NOPASSWD:ALL"
-        mode: '0440'
-      become: yes
-
-    - name: Ensure .ssh directory exists for user on gateway
-      file:
+    - name: Create .ssh directory
+      ansible.builtin.file:
         path: "/home/{{ new_user }}/.ssh"
         state: directory
         owner: "{{ new_user }}"
         group: "{{ new_user }}"
-        mode: '0700'
-      become: yes
+        mode: 0700
 
-    - name: Add SSH public key to user on gateway
-      authorized_key:
+    - name: Install public key for new user
+      ansible.posix.authorized_key:
         user: "{{ new_user }}"
-        key: "{{ lookup('file', ssh_keys_file) }}"
-      become: yes
-
-    - name: Disable root SSH login on gateway
-      lineinfile:
-        path: /etc/ssh/sshd_config
-        regexp: '^PermitRootLogin'
-        line: 'PermitRootLogin no'
-      become: yes
-
-    - name: Force SSH key authentication only on gateway
-      lineinfile:
-        path: /etc/ssh/sshd_config
-        regexp: '^PasswordAuthentication'
-        line: 'PasswordAuthentication no'
-      become: yes
-
-    - name: Restart SSH service on gateway
-      service:
-        name: ssh
-        state: restarted
-        enabled: yes
-      become: yes
-
-    - name: Lock root account on gateway
-      user:
-        name: root
-        password_lock: yes
-      become: yes
-
-- name: Configure private nodes via gateway
-  hosts: private
-  gather_facts: yes
-  vars:
-    new_user: funmicra
-    new_password: "$6$GIKHhWdLQUBFGgYI$eMxFfEWz3yqPp5nxMHi9.MmaCe53uqfo9ofbb6p2U6seno4Dh0bAQFb7T8GXYzsjchoEBWsGyAeOHP8X8bDsS1" 
-    ssh_keys_file: "~/.ssh/id_rsa.pub"
-    ssh_users:
-      - root
-      - "{{ new_user }}"
-  tasks:
-
-    - name: Determine which user can SSH
-      block:
-        - name: Try connecting with a user
-          ansible.builtin.ping:
-          vars:
-            ansible_user: "{{ item }}"
-          loop: "{{ ssh_users }}"
-          register: ping_result
-          ignore_errors: yes
-          until: ping_result is success
-          retries: 2
-          delay: 5
-
-        - name: Set working SSH user
-          set_fact:
-            ansible_user: "{{ item }}"
-          when: ping_result.results[loop.index0].failed == false
-          loop: "{{ ssh_users }}"
-          loop_control:
-            index_var: loop_index
-          run_once: true
-
-    - name: Confirm which user is used
-      ansible.builtin.debug:
-        msg: "Using SSH user {{ ansible_user }}"
-
-    # All the same tasks as for gateway, using become: yes
-    - name: Ensure the user exists on private nodes
-      user:
-        name: "{{ new_user }}"
-        password: "{{ new_password }}"
-        shell: /bin/bash
-        create_home: yes
-        update_password: on_create
-      become: yes
-
-    - name: Add user to sudoers on private nodes
-      copy:
-        dest: "/etc/sudoers.d/{{ new_user }}"
-        content: "{{ new_user }} ALL=(ALL) NOPASSWD:ALL"
-        mode: '0440'
-      become: yes
-
-    - name: Ensure .ssh directory exists for user on private nodes
-      file:
-        path: "/home/{{ new_user }}/.ssh"
-        state: directory
-        owner: "{{ new_user }}"
-        group: "{{ new_user }}"
-        mode: '0700'
-      become: yes
-
-    - name: Add SSH public key to user on private nodes
-      authorized_key:
-        user: "{{ new_user }}"
-        key: "{{ lookup('file', ssh_keys_file) }}"
-      become: yes
-
-    - name: Disable root SSH login on private nodes
-      lineinfile:
-        path: /etc/ssh/sshd_config
-        regexp: '^PermitRootLogin'
-        line: 'PermitRootLogin no'
-      become: yes
-
-    - name: Force SSH key authentication only on private nodes
-      lineinfile:
-        path: /etc/ssh/sshd_config
-        regexp: '^PasswordAuthentication'
-        line: 'PasswordAuthentication no'
-      become: yes
-
-    - name: Restart SSH service on private nodes
-      service:
-        name: ssh
-        state: restarted
-        enabled: yes
-      become: yes
-
-    - name: Lock root account on private nodes
-      user:
-        name: root
-        password_lock: yes
-      become: yes
+        key: "{{ ssh_pub_key_file }}"
+        state: present

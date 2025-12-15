@@ -125,7 +125,7 @@ pipeline {
                     sh """
                         ansible-playbook -i ansible/hosts.ini ansible/playbook.yaml \
                         -u root -vv \
-                        -e "new_password=\${NEW_PASSWORD} ssh_keys_file=\${SSH_KEYS_FILE} ansible_ssh_private_key_file=\${SSH_KEY}"
+                        -e "ssh_keys_file=${SSH_KEYS_FILE}"
                     """
                 }
             }
