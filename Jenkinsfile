@@ -44,14 +44,12 @@ pipeline {
             steps {
                 script {
                     echo "Generating Terraform import commands..."
-
                     def vm_ids = sh(
                         script: "terraform -chdir=terraform output -json instance_ids",
                         returnStdout: true
                     ).trim()
 
                     def parsed = readJSON text: vm_ids
-
                     parsed.eachWithIndex { id, idx ->
                         def resource_name = "linode_instance.private[${idx}]"
                         echo "terraform import ${resource_name} ${id}"
@@ -105,7 +103,6 @@ pipeline {
                         sed -i "/\\[private:vars\\]/,+1 s/ProxyJump=root@.*/ProxyJump=root@${gateway_ip}/" ansible/hosts.ini
                     """
 
-                    // Export for next stage
                     env.GATEWAY_IP = gateway_ip
                 }
             }
@@ -114,17 +111,23 @@ pipeline {
         stage('Ansible') {
             steps {
                 sshagent(['ANSIBLE_SSH_KEY']) {
-                withEnv(["ANSIBLE_SSH_PUB_KEY=$(ssh-add -L)"]) {
-                    sh """
-                    ansible-playbook -i ansible/hosts.ini ansible/playbook.yaml \
-                    -u root -vv \
-                    -e "ssh_extra_args=\"-o StrictHostKeyChecking=no -J root@${GATEWAY_IP}\""
+                    script {
+                        // Extract public key from Jenkins SSH credential
+                        def pubKey = sh(script: "ssh-add -L | head -n1", returnStdout: true).trim()
 
-                    """
+                        sh """
+                        ansible-playbook -i ansible/hosts.ini ansible/playbook.yaml \
+                        -u root -vv \
+                        -e "ssh_extra_args='-o StrictHostKeyChecking=no -J root@${GATEWAY_IP}'" \
+                        -e "ssh_pub_key='${pubKey}'"
+                        """
+                    }
                 }
             }
         }
+
     }
+
     post {
         success {
             echo 'Infrastructure provisioned and configured successfully.'
