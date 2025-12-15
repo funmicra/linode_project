@@ -111,19 +111,18 @@ pipeline {
         stage('Ansible') {
             steps {
                 sshagent(['ANSIBLE_SSH_KEY']) {
-                    script {
-                        // Extract public key from Jenkins SSH credential
-                        def pubKey = sh(script: "ssh-add -L | head -n1", returnStdout: true).trim().replaceAll("\n","")
+                    withCredentials([file(credentialsId: 'ansible_ssh_pub_key', variable: 'PUBKEY_FILE')]) {
                         sh """
                         ansible-playbook -i ansible/hosts.ini ansible/playbook.yaml \
-                        -u root -vv \
-                        -e "ssh_extra_args='-o StrictHostKeyChecking=no -J root@${GATEWAY_IP}'" \
-                        -e "ssh_pub_key=${PUBKEY_FILE}"
+                            -u root -vv \
+                            -e ssh_extra_args='-o StrictHostKeyChecking=no -J root@${GATEWAY_IP}' \
+                            -e "ssh_pub_key=${PUBKEY_FILE}"
                         """
                     }
                 }
             }
         }
+
 
     }
 
