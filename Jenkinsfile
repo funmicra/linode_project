@@ -62,19 +62,43 @@ pipeline {
         }
     }
 
+    stage('Reapply SSH keys') {
+        when {
+            expression {
+                // Optional: trigger only if commit message contains [INFRA]
+                currentBuild.changeSets.any { cs ->
+                    cs.items.any { it.msg.contains("[INFRA]") }
+                }
+            }
+        }
+        steps {
+            script {
+                // List of all instance IPs from Terraform output
+                def ips = sh(script: 'terraform -chdir=terraform output -raw instance_ips', returnStdout: true).trim().split()
 
-    stage('Prepare SSH known_hosts') {
-      steps {
-        sh '''
-          mkdir -p ~/.ssh
-          touch ~/.ssh/known_hosts
+                for (ip in ips) {
+                    sh "ssh-keyscan -H ${ip} >> /var/lib/jenkins/.ssh/known_hosts"
+                }
 
-          for ip in $(terraform -chdir=terraform output -raw instance_ips); do
-            ssh-keygen -f ~/.ssh/known_hosts -R "$ip" || true
-          done
-        '''
-      }
+                sh "chown -R jenkins:jenkins /var/lib/jenkins/.ssh/"
+            }
+        }
     }
+
+
+
+    // stage('Prepare SSH known_hosts') {
+    //   steps {
+    //     sh '''
+    //       mkdir -p ~/.ssh
+    //       touch ~/.ssh/known_hosts
+
+    //       for ip in $(terraform -chdir=terraform output -raw instance_ips); do
+    //         ssh-keygen -f ~/.ssh/known_hosts -R "$ip" || true
+    //       done
+    //     '''
+    //   }
+    // }
 
     stage('Update Ansible Inventory') {
         steps {
@@ -112,7 +136,7 @@ pipeline {
               -i ansible/hosts.ini \
               ansible/playbook.yaml \
               --private-key "$SSH_KEY" \
-              -u root -vvv \
+              -u root -vv \
               --ssh-extra-args="-o UserKnownHostsFile=/var/lib/jenkins/.ssh/known_hosts"
           '''
         }
