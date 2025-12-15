@@ -114,20 +114,17 @@ pipeline {
         stage('Ansible') {
             steps {
                 sshagent(['ANSIBLE_SSH_KEY']) {
-                    withEnv(["ANSIBLE_SSH_PUB_KEY=$(ssh-add -L)"]) {
-                        sh """
-                        ansible-playbook -i ansible/hosts.ini ansible/playbook.yaml \
-                        -u root -vv \
-                        -e "ssh_extra_args=\"-o StrictHostKeyChecking=no -J root@${GATEWAY_IP}\""
+                withEnv(["ANSIBLE_SSH_PUB_KEY=$(ssh-add -L)"]) {
+                    sh """
+                    ansible-playbook -i ansible/hosts.ini ansible/playbook.yaml \
+                    -u root -vv \
+                    -e "ssh_extra_args=\"-o StrictHostKeyChecking=no -J root@${GATEWAY_IP}\""
 
-                        """
-                    }
+                    """
                 }
             }
         }
-
     }
-
     post {
         success {
             echo 'Infrastructure provisioned and configured successfully.'
