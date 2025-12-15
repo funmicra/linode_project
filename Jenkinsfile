@@ -74,19 +74,26 @@ pipeline {
             }
             steps {
                 script {
-                    def ips = sh(
+                    // Get private IPs from Terraform as JSON and parse with jq
+                    def ipsJson = sh(
                         script: 'terraform -chdir=terraform output -json private_ips',
                         returnStdout: true
-                    ).trim().split("\\s+")
+                    ).trim()
 
+                    // Convert JSON array to Groovy list
+                    def ips = readJSON text: ipsJson
+
+                    // Loop over each IP and add to known_hosts
                     for (ip in ips) {
                         sh "ssh-keyscan -H ${ip} >> /var/lib/jenkins/.ssh/known_hosts"
                     }
 
+                    // Fix permissions
                     sh "chown -R jenkins:jenkins /var/lib/jenkins/.ssh/"
                 }
             }
         }
+
 
         stage('Update Ansible Inventory') {
             steps {
