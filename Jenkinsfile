@@ -128,21 +128,23 @@ pipeline {
                     )
                 ]) {
                     sh '''
-                    # Read public key (keep it in one line)
-                    SSH_KEY_CONTENT=$(tr -d '\\n' < "$ANSIBLE_PUB_KEY_FILE")
+                    # Read public key with newlines intact
+                    SSH_KEY_CONTENT=$(cat "$ANSIBLE_PUB_KEY_FILE")
 
-                    # Run Ansible with private key for SSH and pass public key to playbook
+                    # Run Ansible playbook with SSH private key and pass public key
                     ansible-playbook ansible/playbook.yaml \
-                        -e "ssh_pub_key='$SSH_KEY_CONTENT'" \
                         -i ansible/hosts.ini \
                         -u "$ANSIBLE_USER" \
                         --private-key "$ANSIBLE_PRIVATE_KEY" \
+                        -e "ssh_pub_key=\\"$SSH_KEY_CONTENT\\"" \
                         -vv
                     '''
                 }
             }
         }
-    }
+
+
+
 
     post {
         success {
