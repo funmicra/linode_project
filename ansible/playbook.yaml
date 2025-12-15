@@ -101,7 +101,7 @@
   gather_facts: yes
   vars:
     new_user: funmicra
-    new_password: "$6$rounds=4096$abcd1234$wYcZ..." 
+    new_password: "$6$GIKHhWdLQUBFGgYI$eMxFfEWz3yqPp5nxMHi9.MmaCe53uqfo9ofbb6p2U6seno4Dh0bAQFb7T8GXYzsjchoEBWsGyAeOHP8X8bDsS1" 
     ssh_keys_file: "~/.ssh/id_rsa.pub"
     ssh_users:
       - root
@@ -190,4 +190,5 @@
     - name: Lock root account on private nodes
       user:
         name: root
-        password_lo_
+        password_lock: yes
+      become: yes
