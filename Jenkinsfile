@@ -114,10 +114,14 @@ pipeline {
         stage('Ansible') {
             steps {
                 sshagent(['ANSIBLE_SSH_KEY']) {
-                    sh """
+                    withEnv(["ANSIBLE_SSH_PUB_KEY=$(ssh-add -L)"]) {
+                        sh """
                         ansible-playbook -i ansible/hosts.ini ansible/playbook.yaml \
-                        -u root -vv -e "ssh_extra_args='-o StrictHostKeyChecking=no -J root@${GATEWAY_IP}'"
-                    """
+                        -u root -vv \
+                        -e "ssh_extra_args=\"-o StrictHostKeyChecking=no -J root@${GATEWAY_IP}\""
+
+                        """
+                    }
                 }
             }
         }
