@@ -114,40 +114,21 @@ pipeline {
             }
         }
 
-        stage('Create user') {
+        stage('Ansible') {
             steps {
                 withCredentials([file(credentialsId: 'ansible_ssh_pub_key', variable: 'PUBKEY_FILE')]) {
                     sh '''
                     # Read the public key into a variable safely
-                    SSH_KEY_CONTENT=$(<"$PUBKEY_FILE")
-                    echo "$SSH_KEY_CONTENT"
+                    SSH_KEY_CONTENT=$(cat "$PUBKEY_FILE")
 
                     # Run ansible-playbook with safe variables
                     ansible-playbook ansible/playbook.yaml \
-                        -e "ssh_pub_key='${SSH_KEY_CONTENT}'" \
-                        -i ansible/hosts.ini \
-                        -u root \
+                        -e "ssh_pub_key=$SSH_KEY_CONTENT" 
                         -vv
                     '''
                 }
             }
         }
-
-        stage('Harden SSH & Disable Root') {
-            environment {
-                ANSIBLE_BECOME_PASS = credentials('ansible_new_user_password') // Jenkins Secret Text
-            }
-            steps {
-                script {
-                    sh """
-                        ansible-playbook -i ansible/hosts.ini ansible/harden_ssh.yaml \
-                        -u funmicra --become --become-method=sudo
-                    """
-                }
-            }
-        }
-
-
 
 
     }
