@@ -34,3 +34,15 @@
         curl -s https://install.zerotier.com | bash
       args:
         creates: /var/lib/zerotier-one
+
+    - name: Ensure Zerotier service is started and enabled
+      ansible.builtin.service:
+        name: zerotier-one
+        state: started
+        enabled: yes
+
+    - name: Join Zerotier network
+      ansible.builtin.shell: |
+        zerotier-cli join {{ zerotier_network_id }}
+      args:
+        creates: /var/lib/zerotier-one/networks.d/{{ zerotier_network_id }}
