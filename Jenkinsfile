@@ -74,7 +74,7 @@ pipeline {
                 script {
                     // Get private IPs from dynamic inventory
                     def private_ips = sh(
-                        script: "jq -r '.private.hosts[]' ansible/dynamic_inventory.json",
+                        script: "jq -r '.private.hosts[]' ansible/inventory/dynamic_inventory.json",
                         returnStdout: true
                     ).trim().split('\\n')
 
