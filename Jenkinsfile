@@ -2,9 +2,9 @@ pipeline {
     agent any
 
     environment {
-        TF_IN_AUTOMATION           = "true"
-        TF_INPUT                    = "false"
-        ANSIBLE_HOST_KEY_CHECKING   = "False"
+        TF_IN_AUTOMATION         = "true"
+        TF_INPUT                  = "false"
+        ANSIBLE_HOST_KEY_CHECKING = "False"
     }
 
     stages {
@@ -19,98 +19,78 @@ pipeline {
         }
 
         stage('Terraform Apply') {
-            when {
-                expression {
-                    currentBuild.changeSets.any { cs ->
-                        cs.items.any { it.msg.contains("[INFRA]") }
-                    }
-                }
-            }
-            environment {
-                TF_VAR_linode_token  = credentials('LINODE_TOKEN')
-                TF_VAR_ssh_keys_file = "${WORKSPACE}/terraform/ssh_key.b64"
-                TF_VAR_user_password = credentials('LINODE_USER_PASSWORD')
-            }
-            steps {
-                sh '''
-                    cd terraform
-                    terraform init
-                    terraform apply -auto-approve
-                '''
-            }
-        }
-
-        stage('Update Dynamic Inventory') {
             steps {
                 script {
-                    // Retry inventory generation to handle first-run latency
-                    retry(3) {
+                    try {
                         sh '''
-                            cd ansible/inventory
-                            python3 dynamic_inventory.py 
+                            cd terraform
+                            terraform init
+                            terraform plan
+                            terraform apply -auto-approve
                         '''
+                    } catch (err) {
+                        echo "Terraform failed, stopping pipeline until fixed."
+                        currentBuild.result = 'FAILURE'
+                        error("Stop pipeline")
                     }
                 }
             }
         }
 
-        stage('Add Proxy to known_hosts') {
-            steps {
-                script {
-                    // Retry reading JSON to handle first-run delay
-                    def proxy_ip = ""
-                    retry(3) {
-                        proxy_ip = sh(
-                            script: "jq -r '.proxy.hosts[0]' ansible/inventory/dynamic_inventory.json",
-                            returnStdout: true
-                        ).trim()
-                        if (!proxy_ip) error("Proxy IP not available yet, retrying...")
-                    }
+        stage('Prepare Inventory & SSH') {
+            parallel {
 
-                    // Add proxy IP to known_hosts safely
-                    sh """
-                        ssh-keygen -R ${proxy_ip} || true
-                        ssh-keyscan -H ${proxy_ip} >> /var/lib/jenkins/.ssh/known_hosts || true
-                        chown jenkins:jenkins /var/lib/jenkins/.ssh/known_hosts
-                    """
+                stage('Generate Inventory') {
+                    steps {
+                        catchError(buildResult: 'SUCCESS', stageResult: 'FAILURE') {
+                            sh 'python3 ansible/inventory/hosts.py'
+                        }
+                    }
+                }
+
+                stage('Add Proxy to known_hosts') {
+                    steps {
+                        catchError(buildResult: 'SUCCESS', stageResult: 'FAILURE') {
+                            script {
+                                def proxy_ip = sh(
+                                    script: "awk '/\\[proxy\\]/ {getline; print}' ansible/inventory/hosts.ini | tr -d '\"'",
+                                    returnStdout: true
+                                ).trim()
+                                sh """
+                                    ssh-keyscan -H ${proxy_ip} >> /var/lib/jenkins/.ssh/known_hosts || true
+                                    chown jenkins:jenkins /var/lib/jenkins/.ssh/known_hosts
+                                """
+                            }
+                        }
+                    }
+                }
+
+                stage('Add Private Nodes to known_hosts') {
+                    steps {
+                        catchError(buildResult: 'SUCCESS', stageResult: 'FAILURE') {
+                            script {
+                                def proxy_ip = sh(
+                                    script: "awk '/\\[proxy\\]/ {getline; print}' ansible/inventory/hosts.ini | tr -d '\"'",
+                                    returnStdout: true
+                                ).trim()
+
+                                def private_ips = sh(
+                                    script: "awk '/\\[private\\]/ {flag=1; next} /^$/ {flag=0} flag {print}' ansible/inventory/hosts.ini | tr -d '\"'",
+                                    returnStdout: true
+                                ).trim().split('\\n')
+
+                                for (ip in private_ips) {
+                                    sh "ssh-keygen -R ${ip} || true"
+                                    sh "ssh-keyscan -o ProxyJump=funmicra@${proxy_ip} -H ${ip} >> /var/lib/jenkins/.ssh/known_hosts || true"
+                                }
+
+                                sh "chown jenkins:jenkins /var/lib/jenkins/.ssh/known_hosts"
+                            }
+                        }
+                    }
                 }
             }
         }
-
-        stage('Add Private Nodes to known_hosts') {
-            steps {
-                script {
-                    def proxy_ip = ""
-                    def private_ips = []
-
-                    // Retry reading JSON to handle first-run
-                    retry(3) {
-                        proxy_ip = sh(
-                            script: "jq -r '.proxy.hosts[0]' ansible/inventory/dynamic_inventory.json",
-                            returnStdout: true
-                        ).trim()
-                        private_ips = sh(
-                            script: "jq -r '.private.hosts[]' ansible/inventory/dynamic_inventory.json",
-                            returnStdout: true
-                        ).trim().split('\\n')
-
-                        if (!proxy_ip || !private_ips) error("Proxy or private IPs not ready, retrying...")
-                    }
-
-                    // Add private nodes
-                    private_ips.each { ip ->
-                        sh """
-                            ssh-keygen -R ${ip} || true
-                            ssh-keyscan -o ProxyJump=funmicra@${proxy_ip} -H ${ip} >> /var/lib/jenkins/.ssh/known_hosts || true
-                        """
-                    }
-
-                    // Fix permissions
-                    sh "chown jenkins:jenkins /var/lib/jenkins/.ssh/known_hosts"
-                }
-            }
-        }
-
 
         stage('Run Ansible Playbooks') {
             steps {
@@ -121,50 +101,33 @@ pipeline {
                         usernameVariable: 'ANSIBLE_USER'
                     )
                 ]) {
-                    sh '''
-                        set -e
-
-                        # Start SSH agent
-                        eval "$(ssh-agent -s)"
-
-                        # Add private key
-                        ssh-add "$ANSIBLE_PRIVATE_KEY"
-
-                        # Read proxy IP from inventory
-                        PROXY_IP=$(awk '/\\[proxy\\]/ {getline; print}' ansible/inventory/hosts.ini | tr -d '"')
-
-                        # Add proxy to known_hosts (avoid SSH prompt)
-                        ssh-keyscan -H "$PROXY_IP" >> /var/lib/jenkins/.ssh/known_hosts || true
-
-                        # Run playbook with ProxyJump using the same private key
-                        ansible-playbook ansible/site.yaml \
-                            -i ansible/inventory/hosts.ini \
-                            -u "$ANSIBLE_USER" \
-                            -vv
-                    '''
+                    retry(2) {
+                        sh '''
+                            set -e
+                            eval "$(ssh-agent -s)"
+                            ssh-add "$ANSIBLE_PRIVATE_KEY"
+                            ansible-playbook ansible/site.yaml -i ansible/inventory/hosts.ini -u "$ANSIBLE_USER" -vv
+                        '''
+                    }
                 }
             }
         }
 
-
-
         stage('Announce Terraform Import Commands') {
             steps {
                 script {
-                    def instance_ids = readJSON(text: sh(script: "terraform -chdir=terraform output -json instance_ids", returnStdout: true).trim())
-                    def proxy_id = sh(script: "terraform -chdir=terraform output -raw proxy_id", returnStdout: true).trim()
-                    def vpc_id = sh(script: "terraform -chdir=terraform output -raw vpc_id", returnStdout: true).trim()
+                    catchError(buildResult: 'SUCCESS', stageResult: 'FAILURE') {
+                        def instance_ids = readJSON(text: sh(script: "terraform -chdir=terraform output -json instance_ids", returnStdout: true).trim())
+                        def proxy_id = sh(script: "terraform -chdir=terraform output -raw proxy_id", returnStdout: true).trim()
+                        def vpc_id = sh(script: "terraform -chdir=terraform output -raw vpc_id", returnStdout: true).trim()
 
-                    // Private instances
-                    instance_ids.eachWithIndex { id, idx ->
-                        echo "terraform import \"linode_instance.private[${idx}]\" ${id}"
+                        instance_ids.eachWithIndex { id, idx ->
+                            echo "terraform import \"linode_instance.private[${idx}]\" ${id}"
+                        }
+
+                        echo "terraform import \"linode_instance.proxy\" ${proxy_id}"
+                        echo "terraform import \"linode_vpc.private\" ${vpc_id}"
                     }
-
-                    // Proxy
-                    echo "terraform import \"linode_instance.proxy\" ${proxy_id}"
-
-                    // VPC
-                    echo "terraform import \"linode_vpc.private\" ${vpc_id}"
                 }
             }
         }
@@ -172,16 +135,15 @@ pipeline {
         stage('Announce SSH Commands') {
             steps {
                 script {
-                    // Get proxy IP
-                    def proxy_ip = sh(script: "terraform -chdir=terraform output -raw proxy_public_ip", returnStdout: true).trim()
+                    catchError(buildResult: 'SUCCESS', stageResult: 'FAILURE') {
+                        def proxy_ip = sh(script: "terraform -chdir=terraform output -raw proxy_public_ip", returnStdout: true).trim()
+                        def private_ips_json = sh(script: "terraform -chdir=terraform output -json private_ips", returnStdout: true).trim()
+                        def private_ips = readJSON text: private_ips_json
 
-                    // Get private IPs as JSON and parse them
-                    def private_ips_json = sh(script: "terraform -chdir=terraform output -json private_ips", returnStdout: true).trim()
-                    def private_ips = readJSON text: private_ips_json
-
-                    echo "Access your private Linodes using the following SSH commands:"
-                    private_ips.eachWithIndex { ip, idx ->
-                        echo "ssh -J funmicra@${proxy_ip} funmicra@${ip}   # private-${idx}"
+                        echo "Access your private Linodes using the following SSH commands:"
+                        private_ips.eachWithIndex { ip, idx ->
+                            echo "ssh -J funmicra@${proxy_ip} funmicra@${ip}   # private-${idx}"
+                        }
                     }
                 }
             }
@@ -190,12 +152,17 @@ pipeline {
         stage('Clean Workspace') {
             steps {
                 echo 'Cleaning Jenkins workspace...'
-                deleteDir()  // Jenkins Pipeline step to remove all files in the workspace
+                deleteDir()
             }
         }
     }
 
     post {
+        always {
+            echo "Cleaning SSH agent and workspace..."
+            sh 'ssh-agent -k || true'
+            deleteDir()
+        }
         success {
             echo 'Infrastructure provisioned and configured successfully.'
         }
