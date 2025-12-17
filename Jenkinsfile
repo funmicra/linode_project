@@ -109,6 +109,7 @@ pipeline {
                     )
                 ]) {
                     sh '''
+                        sleep 10
                         set -e
 
                         # Start SSH agent
