@@ -8,10 +8,7 @@
         private-{{ groups['private'].index(inventory_hostname) }}
       {% else %}
         {{ inventory_hostname_short }}
-      {% endif %}
-  # strip whitespace
-  vars:
-    custom_hostname: "{{ custom_hostname | trim }}"
+      {% endif %} | trim
 
 - name: Set hostname
   hostname:
