@@ -99,35 +99,6 @@ pipeline {
             }
         }
 
-        // stage('Run Ansible Playbooks') {
-        //     steps {
-        //         withCredentials([
-        //             sshUserPrivateKey(
-        //                 credentialsId: 'ANSIBLE_PRIVATE_KEY',
-        //                 keyFileVariable: 'ANSIBLE_PRIVATE_KEY',
-        //                 usernameVariable: 'ANSIBLE_USER'
-        //             ),
-        //             file(
-        //                 credentialsId: 'ANSIBLE_PUB_KEY_FILE',
-        //                 variable: 'ANSIBLE_PUB_KEY_FILE'
-        //             )
-        //         ]) {
-        //             sh '''
-        //                 set -e
-
-        //                 SSH_KEY_CONTENT=$(cat "$ANSIBLE_PUB_KEY_FILE")
-
-        //                 ansible-playbook ansible/site.yaml \
-        //                     -i ansible/inventory/hosts.ini \
-        //                     -u "$ANSIBLE_USER" \
-        //                     --private-key "$ANSIBLE_PRIVATE_KEY" \
-        //                     -e "ssh_pub_key=\\"$SSH_KEY_CONTENT\\"" \
-        //                     -vv
-        //             '''
-        //         }
-        //     }
-        // }
-
         stage('Run Ansible Playbooks') {
             steps {
                 withCredentials([
@@ -139,19 +110,22 @@ pipeline {
                 ]) {
                     sh '''
                         set -e
+
+                        # Make sure private key permissions are correct
                         chmod 600 "$ANSIBLE_PRIVATE_KEY"
 
-                        # Read proxy IP from static hosts.ini
+                        # Read proxy IP from inventory
                         PROXY_IP=$(awk '/\\[proxy\\]/ {getline; print}' ansible/inventory/hosts.ini | tr -d '"')
 
-                        # Add proxy to known_hosts
+                        # Add proxy to known_hosts (avoid SSH prompt)
                         ssh-keyscan -H "$PROXY_IP" >> /var/lib/jenkins/.ssh/known_hosts || true
 
-                        # Run playbook (no need to pass SSH key)
+                        # Run playbook with ProxyJump using the same private key
                         ansible-playbook ansible/site.yaml \
                             -i ansible/inventory/hosts.ini \
                             -u "$ANSIBLE_USER" \
                             --private-key "$ANSIBLE_PRIVATE_KEY" \
+                            -e "ansible_ssh_common_args='-o ProxyJump=$ANSIBLE_USER@$PROXY_IP -o IdentityFile=$ANSIBLE_PRIVATE_KEY -o StrictHostKeyChecking=no'" \
                             -vv
                     '''
                 }
