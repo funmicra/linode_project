@@ -35,9 +35,7 @@ pipeline {
                 sh '''
                     cd terraform
                     terraform init
-                    terraform plan
                     terraform apply -auto-approve
-                    sleep 10
                 '''
             }
         }
@@ -45,42 +43,35 @@ pipeline {
         stage('Update Dynamic Inventory') {
             steps {
                 script {
-                    sh '''
-                        cd ansible/inventory
-                        python3 dynamic_inventory.py 
-                    '''
+                    // Retry inventory generation to handle first-run latency
+                    retry(3) {
+                        sh '''
+                            cd ansible/inventory
+                            python3 dynamic_inventory.py 
+                        '''
+                    }
                 }
             }
         }
-
-
 
         stage('Add Proxy to known_hosts') {
             steps {
                 script {
-                    // extract proxy IP
-                    def proxy_ip = sh(script: "jq -r '.proxy.hosts[0]' ansible/inventory/dynamic_inventory.json", returnStdout: true).trim()
+                    // Retry reading JSON to handle first-run delay
+                    def proxy_ip = ""
+                    retry(3) {
+                        proxy_ip = sh(
+                            script: "jq -r '.proxy.hosts[0]' ansible/inventory/dynamic_inventory.json",
+                            returnStdout: true
+                        ).trim()
+                        if (!proxy_ip) error("Proxy IP not available yet, retrying...")
+                    }
 
-                    // add proxy IP to known_hosts
+                    // Add proxy IP to known_hosts safely
                     sh """
-                        until ssh -o StrictHostKeyChecking=no -o ConnectTimeout=5 funmicra@${proxy_ip} 'echo ready'; do
-                            echo "Waiting for proxy ${proxy_ip} to be ready..."
-                            sleep 5
-                        done
+                        ssh-keygen -R ${proxy_ip} || true
                         ssh-keyscan -H ${proxy_ip} >> /var/lib/jenkins/.ssh/known_hosts || true
                         chown jenkins:jenkins /var/lib/jenkins/.ssh/known_hosts
-                    """
-                }
-            }
-        }
-
-        stage('Deploy Jenkins Key to Proxy') {
-            steps {
-                script {
-                    def proxy_ip = sh(script: "jq -r '.proxy.hosts[0]' ansible/inventory/dynamic_inventory.json", returnStdout: true).trim()
-                    sh """
-                        ssh -o StrictHostKeyChecking=no funmicra@${proxy_ip} 'mkdir -p ~/.ssh && chmod 700 ~/.ssh'
-                        ssh-copy-id -i /var/lib/jenkins/.ssh/id_rsa.pub funmicra@${proxy_ip} || true
                     """
                 }
             }
@@ -89,31 +80,37 @@ pipeline {
         stage('Add Private Nodes to known_hosts') {
             steps {
                 script {
-                    // Get the proxy IP inside this block
-                    def proxy_ip = sh(
-                        script: "jq -r '.proxy.hosts[0]' ansible/inventory/dynamic_inventory.json",
-                        returnStdout: true
-                    ).trim()
+                    def proxy_ip = ""
+                    def private_ips = []
 
-                    // Get private IPs
-                    def private_ips = sh(
-                        script: "jq -r '.private.hosts[]' ansible/inventory/dynamic_inventory.json",
-                        returnStdout: true
-                    ).trim().split('\\n')
+                    // Retry reading JSON to handle first-run
+                    retry(3) {
+                        proxy_ip = sh(
+                            script: "jq -r '.proxy.hosts[0]' ansible/inventory/dynamic_inventory.json",
+                            returnStdout: true
+                        ).trim()
+                        private_ips = sh(
+                            script: "jq -r '.private.hosts[]' ansible/inventory/dynamic_inventory.json",
+                            returnStdout: true
+                        ).trim().split('\\n')
 
-                    for (ip in private_ips) {
-                        // Remove old entry
-                        sh "ssh-keygen -R ${ip} || true"
-
-                        // Add key with ProxyJump
-                        sh "ssh-keyscan -o ProxyJump=funmicra@${proxy_ip} -H ${ip} >> /var/lib/jenkins/.ssh/known_hosts || true"
+                        if (!proxy_ip || !private_ips) error("Proxy or private IPs not ready, retrying...")
                     }
 
-                        // Fix permissions
-                        sh "chown jenkins:jenkins /var/lib/jenkins/.ssh/known_hosts"
+                    // Add private nodes
+                    private_ips.each { ip ->
+                        sh """
+                            ssh-keygen -R ${ip} || true
+                            ssh-keyscan -o ProxyJump=funmicra@${proxy_ip} -H ${ip} >> /var/lib/jenkins/.ssh/known_hosts || true
+                        """
+                    }
+
+                    // Fix permissions
+                    sh "chown jenkins:jenkins /var/lib/jenkins/.ssh/known_hosts"
                 }
             }
         }
+
 
         stage('Run Ansible Playbooks') {
             steps {
