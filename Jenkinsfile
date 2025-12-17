@@ -115,27 +115,18 @@ pipeline {
                     sh '''
                         set -e
 
-                        # Make sure private key permissions are correct
-                        chmod 600 "$ANSIBLE_PRIVATE_KEY"
-
-                        # Add proxy to known_hosts (if not already done)
-                        PROXY_IP=$(awk '/\\[proxy\\]/ {getline; print}' ansible/inventory/hosts.ini | tr -d '"')
-                        ssh-keyscan -H "$PROXY_IP" >> /var/lib/jenkins/.ssh/known_hosts || true
-
                         SSH_KEY_CONTENT=$(cat "$ANSIBLE_PUB_KEY_FILE")
 
                         ansible-playbook ansible/site.yaml \
                             -i ansible/inventory/hosts.ini \
                             -u "$ANSIBLE_USER" \
                             --private-key "$ANSIBLE_PRIVATE_KEY" \
-                            -e "ssh_pub_key=\\\"\$SSH_KEY_CONTENT\\\"" \
-                            -e "ansible_ssh_common_args='-o ProxyJump=${ANSIBLE_USER}@${PROXY_IP} -o StrictHostKeyChecking=no'" \
+                            -e "ssh_pub_key=\\"$SSH_KEY_CONTENT\\"" \
                             -vv
                     '''
                 }
             }
         }
-
 
         stage('Announce Terraform Import Commands') {
             steps {
