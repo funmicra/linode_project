@@ -41,8 +41,6 @@
 # --------------------------
 - name: Install ZeroTier using official script
   shell: curl -s https://install.zerotier.com | bash
-  args:
-    warn: false
   become: true
 
 - name: Enable and start ZeroTier
@@ -50,12 +48,6 @@
     name: zerotier-one
     state: started
     enabled: yes
-  become: true
-
-- name: Join ZeroTier network
-  command: zerotier-cli join <YOUR_NETWORK_ID>
-  args:
-    creates: /var/lib/zerotier-one/<YOUR_NETWORK_ID>.conf
   become: true
 
 # --------------------------
