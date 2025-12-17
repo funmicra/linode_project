@@ -1,3 +1,0 @@
-# Authentication
-linode_token = "4a8af0f7f5579cfa393c10572e6fdf558eae33f47dbb9796a0c7b45cbf7ef770"
-user_password = "$6$/n4PwKoXStmDAW.l$iJOeKlN0Pgz7GBmHNF2rKU5bv5/kHiQF/DglnTUYwOCLZ1tuS2WeyUclmJBpjHWubATZjwn3amM32toYqam9B1"

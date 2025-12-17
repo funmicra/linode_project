@@ -1,0 +1,32 @@
+---
+- name: Update apt cache
+  apt:
+    update_cache: yes
+  become: true
+
+- name: Upgrade all packages
+  apt:
+    upgrade: dist
+    autoclean: yes
+    autoremove: yes
+  become: true
+
+- name: Install required packages
+  apt:
+    name: "{{ packages_to_install }}"
+    state: present
+  become: true
+
+- name: Ensure Docker service is started and enabled
+  systemd:
+    name: docker
+    state: started
+    enabled: yes
+  become: true
+
+- name: Add user to docker group
+  user:
+    name: "{{ ansible_user }}"
+    groups: docker
+    append: yes
+  become: true 

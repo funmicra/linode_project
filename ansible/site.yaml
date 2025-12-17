@@ -12,4 +12,5 @@
     - private_proxy
     - firewall
     - apt
+    - install_packages
   tags: private

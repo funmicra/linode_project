@@ -1,0 +1,15 @@
+---
+packages_to_install:
+  - vim
+  - htop
+  - curl
+  - git
+  - unzip
+  - wget
+  - build-essential
+  - software-properties-common
+  - apt-transport-https
+  - docker.io
+  - docker-compose
+  - nginx
+  
