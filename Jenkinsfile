@@ -125,7 +125,6 @@ pipeline {
                             -i ansible/inventory/hosts.ini \
                             -u "$ANSIBLE_USER" \
                             --private-key "$ANSIBLE_PRIVATE_KEY" \
-                            -e "ansible_ssh_common_args='-o ProxyJump=$ANSIBLE_USER@$PROXY_IP -o IdentityFile=$ANSIBLE_PRIVATE_KEY -o StrictHostKeyChecking=no'" \
                             -vv
                     '''
                 }
