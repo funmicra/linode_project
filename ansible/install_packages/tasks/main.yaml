@@ -39,30 +39,23 @@
 # --------------------------
 # ZeroTier setup
 # --------------------------
-- name: Add ZeroTier repository key
-  apt_key:
-    url: https://download.zerotier.com/contact%40zerotier.com.gpg
-    state: present
+- name: Install ZeroTier using official script
+  shell: curl -s https://install.zerotier.com | bash
+  args:
+    warn: false
   become: true
 
-- name: Add ZeroTier repository
-  apt_repository:
-    repo: "deb http://download.zerotier.com/debian/buster buster main"
-    state: present
-  become: true
-
-- name: Install ZeroTier package
-  apt:
-    name: zerotier-one
-    state: present
-    update_cache: yes
-  become: true
-
-- name: Enable and start ZeroTier service
+- name: Enable and start ZeroTier
   systemd:
     name: zerotier-one
     state: started
     enabled: yes
+  become: true
+
+- name: Join ZeroTier network
+  command: zerotier-cli join <YOUR_NETWORK_ID>
+  args:
+    creates: /var/lib/zerotier-one/<YOUR_NETWORK_ID>.conf
   become: true
 
 # --------------------------
