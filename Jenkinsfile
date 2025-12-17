@@ -45,16 +45,14 @@ pipeline {
             steps {
                 script {
                     // Retry inventory generation to handle first-run latency
-                    retry(3) {
-                        sh '''
-                            cd ansible/inventory
-                            python3 dynamic_inventory.py
-                            sleep 5  # Wait before next attempt
-                        '''
-                    }
+                    sh '''
+                        cd ansible/inventory
+                        python3 dynamic_inventory.py
+                    '''
                 }
             }
         }
+        
 
         stage('Add Proxy to known_hosts') {
             steps {
