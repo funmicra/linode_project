@@ -16,6 +16,8 @@
     name: "{{ packages_to_install }}"
     state: present
   become: true
+  notify:
+    - Start Docker
 
 - name: Ensure Docker service is started and enabled
   systemd:

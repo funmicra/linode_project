@@ -1,0 +1,7 @@
+---
+- name: Start Docker
+  systemd:
+    name: docker
+    state: started
+    enabled: yes
+  become: true
