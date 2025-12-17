@@ -47,27 +47,20 @@ pipeline {
                 script {
                     sh '''
                         cd ansible/inventory
+                        chmod +x dynamic_inventory.py
 
-                        # Make sure the dynamic inventory exists
+                        # Generate JSON inventory
                         python3 dynamic_inventory.py --list > dynamic_inventory.json
 
-                        # Create hosts.ini
-                        echo "[proxy]" > hosts.ini
-                        jq -r '.proxy.hosts[]' dynamic_inventory.json >> hosts.ini
-
-                        echo "" >> hosts.ini
-                        echo "[private]" >> hosts.ini
-                        jq -r '.private.hosts[]' dynamic_inventory.json >> hosts.ini
-
-                        # Optional: add vars
-                        echo "" >> hosts.ini
-                        echo "[private:vars]" >> hosts.ini
-                        echo "ansible_user=funmicra" >> hosts.ini
-                        echo "ansible_ssh_common_args='-o ProxyJump=funmicra@$(jq -r '.proxy.hosts[0]' dynamic_inventory.json)'" >> hosts.ini
+                        # Convert to static hosts.ini (only proxy + private IPs)
+                        jq -r '
+                        "[proxy]\\n" + (.proxy.hosts[] // empty) + "\\n\\n[private]\\n" + (.private.hosts[] // empty)
+                        ' dynamic_inventory.json > hosts.ini
                     '''
                 }
             }
         }
+
 
 
         stage('Add Proxy to known_hosts') {
@@ -128,21 +121,18 @@ pipeline {
                     )
                 ]) {
                     script {
-                        def inventoryFile = 'ansible/inventory/dynamic_inventory.py'
-
-                        // Check if dynamic inventory produces content
-                        def inventoryIsEmpty = sh(
-                            script: "python3 ${inventoryFile} --list | jq 'length' || echo 0",
+                        // Check if dynamic_inventory.py produces hosts
+                        def inventoryCount = sh(
+                            script: "python3 ansible/inventory/dynamic_inventory.py --list | jq '.proxy.hosts | length'",
                             returnStdout: true
                         ).trim()
 
-                        // Choose inventory
-                        def inventoryToUse = (inventoryIsEmpty == '0') ? 'ansible/inventory/hosts.ini' : inventoryFile
+                        def inventoryFile = (inventoryCount == '0') ? 'ansible/inventory/hosts.ini' : 'ansible/inventory/dynamic_inventory.py'
 
                         sh """
                             SSH_KEY_CONTENT=\$(cat "$ANSIBLE_PUB_KEY_FILE")
                             ansible-playbook ansible/site.yaml \
-                                -i ${inventoryToUse} \
+                                -i ${inventoryFile} \
                                 -u "$ANSIBLE_USER" \
                                 --private-key "$ANSIBLE_PRIVATE_KEY" \
                                 -e "ssh_pub_key=\\\"\$SSH_KEY_CONTENT\\\"" \
@@ -152,8 +142,6 @@ pipeline {
                 }
             }
         }
-
-
 
         stage('Announce Terraform Import Commands') {
             steps {
