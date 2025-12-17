@@ -54,8 +54,11 @@ pipeline {
 
                         # Convert to static hosts.ini (only proxy + private IPs)
                         jq -r '
-                        "[proxy]\\n" + (.proxy.hosts[] // empty) + "\\n\\n[private]\\n" + (.private.hosts[] // empty)
-                        ' dynamic_inventory.json > hosts.ini
+                            "[proxy]\n"
+                            + (.proxy.hosts[] | tostring)
+                            + "\n\n[private]\n"
+                            + (.private.hosts[] | tostring)
+                            ' dynamic_inventory.json > hosts.ini
                     '''
                 }
             }
