@@ -47,7 +47,7 @@ pipeline {
                 stage('Generate Inventory') {
                     steps {
                         catchError(buildResult: 'SUCCESS', stageResult: 'FAILURE') {
-                            sh 'python3 ansible/inventory/hosts.py'
+                            sh 'python3 ansible/inventory/dynamic_inventory.py'
                         }
                     }
                 }
