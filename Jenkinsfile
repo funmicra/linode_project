@@ -42,32 +42,16 @@ pipeline {
             }
         }
 
-        // stage('Update Dynamic Inventory') {
-        //     steps {
-        //         script {
-        //             sh '''
-        //                 cd ansible/inventory
-        //                 chmod +x dynamic_inventory.py
-
-        //                 # Generate JSON inventory
-        //                 python3 dynamic_inventory.py --list > dynamic_inventory.json
-
-        //                 # Convert to static hosts.ini (only proxy + private IPs)
-        //                 PROXY_IP=$(jq -r '.proxy.hosts[0]' dynamic_inventory.json)
-
-        //                 jq -r --arg proxy "$PROXY_IP" '
-        //                 "[proxy]\n"
-        //                 + (.proxy.hosts[] | tostring)
-        //                 + "\n\n[private]\n"
-        //                 + (.private.hosts[] | tostring)
-        //                 + "\n\n[private:vars]\n"
-        //                 + "ansible_ssh_common_args=-o ProxyJump=funmicra@" + $proxy
-        //                 ' dynamic_inventory.json > hosts.ini
-
-        //             '''
-        //         }
-        //     }
-        // }
+        stage('Update Dynamic Inventory') {
+            steps {
+                script {
+                    sh '''
+                        cd ansible/inventory
+                        python3 dynamic_inventory.py 
+                    '''
+                }
+            }
+        }
 
 
 
@@ -128,25 +112,18 @@ pipeline {
                         variable: 'ANSIBLE_PUB_KEY_FILE'
                     )
                 ]) {
-                    script {
-                        // Check if dynamic_inventory.py produces hosts
-                        def inventoryCount = sh(
-                            script: "python3 ansible/inventory/dynamic_inventory.py --list | jq '.proxy.hosts | length'",
-                            returnStdout: true
-                        ).trim()
+                    sh '''
+                        set -e
 
-                        def inventoryFile = (inventoryCount == '0') ? 'ansible/inventory/hosts.ini' : 'ansible/inventory/dynamic_inventory.py'
+                        SSH_KEY_CONTENT=$(cat "$ANSIBLE_PUB_KEY_FILE")
 
-                        sh """
-                            SSH_KEY_CONTENT=\$(cat "$ANSIBLE_PUB_KEY_FILE")
-                            ansible-playbook ansible/site.yaml \
-                                -i ansible/inventory/hosts.ini \
-                                -u "$ANSIBLE_USER" \
-                                --private-key "$ANSIBLE_PRIVATE_KEY" \
-                                -e "ssh_pub_key=\\\"\$SSH_KEY_CONTENT\\\"" \
-                                -vv
-                        """
-                    }
+                        ansible-playbook ansible/site.yaml \
+                            -i ansible/inventory/hosts.ini \
+                            -u "$ANSIBLE_USER" \
+                            --private-key "$ANSIBLE_PRIVATE_KEY" \
+                            -e "ssh_pub_key=\\"$SSH_KEY_CONTENT\\"" \
+                            -vv
+                    '''
                 }
             }
         }
