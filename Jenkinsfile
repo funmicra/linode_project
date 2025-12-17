@@ -135,7 +135,7 @@ pipeline {
                         sh """
                             SSH_KEY_CONTENT=\$(cat "$ANSIBLE_PUB_KEY_FILE")
                             ansible-playbook ansible/site.yaml \
-                                -i ${inventoryFile} \
+                                -i ansible/inventory/hosts.ini \
                                 -u "$ANSIBLE_USER" \
                                 --private-key "$ANSIBLE_PRIVATE_KEY" \
                                 -e "ssh_pub_key=\\\"\$SSH_KEY_CONTENT\\\"" \
