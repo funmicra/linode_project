@@ -53,12 +53,17 @@ pipeline {
                         python3 dynamic_inventory.py --list > dynamic_inventory.json
 
                         # Convert to static hosts.ini (only proxy + private IPs)
-                        jq -r '
-                            "[proxy]\n"
-                            + (.proxy.hosts[] | tostring)
-                            + "\n\n[private]\n"
-                            + (.private.hosts[] | tostring)
-                            ' dynamic_inventory.json > hosts.ini
+                        PROXY_IP=$(jq -r '.proxy.hosts[0]' dynamic_inventory.json)
+
+                        jq -r --arg proxy "$PROXY_IP" '
+                        "[proxy]\n"
+                        + (.proxy.hosts[] | tostring)
+                        + "\n\n[private]\n"
+                        + (.private.hosts[] | tostring)
+                        + "\n\n[private:vars]\n"
+                        + "ansible_ssh_common_args=-o ProxyJump=funmicra@" + $proxy
+                        ' dynamic_inventory.json > hosts.ini
+
                     '''
                 }
             }
