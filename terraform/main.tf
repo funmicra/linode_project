@@ -117,6 +117,11 @@ output "instance_ids" {
   ]
 }
 
+output "vpc_id" {
+  description = "Terraform ID of the private VPC"
+  value       = linode_vpc.private.id
+}
+
 # ------------------------
 # Variables
 # ------------------------
