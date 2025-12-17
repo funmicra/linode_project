@@ -74,13 +74,13 @@ pipeline {
                 script {
                     // Get the proxy IP inside this block
                     def proxy_ip = sh(
-                        script: "jq -r '.proxy.hosts[0]' ansible/dynamic_inventory.json",
+                        script: "jq -r '.proxy.hosts[0]' ansible/inventory/dynamic_inventory.json",
                         returnStdout: true
                     ).trim()
 
                     // Get private IPs
                     def private_ips = sh(
-                        script: "jq -r '.private.hosts[]' ansible/dynamic_inventory.json",
+                        script: "jq -r '.private.hosts[]' ansible/inventory/dynamic_inventory.json",
                         returnStdout: true
                     ).trim().split('\\n')
 
@@ -113,7 +113,7 @@ pipeline {
                 ]) {
                     sh '''
                         SSH_KEY_CONTENT=$(cat "$ANSIBLE_PUB_KEY_FILE")
-                        ansible-playbook ansible/playbook.yaml \
+                        ansible-playbook ansible/site.yaml \
                             -i ansible/inventory/dynamic_inventory.py \
                             -u "$ANSIBLE_USER" \
                             --private-key "$ANSIBLE_PRIVATE_KEY" \
