@@ -47,9 +47,23 @@ pipeline {
                 script {
                     sh '''
                         cd ansible/inventory
-                        chmod +x dynamic_inventory.py
-                        # Test that the dynamic inventory works
+
+                        # Make sure the dynamic inventory exists
                         python3 dynamic_inventory.py --list > dynamic_inventory.json
+
+                        # Create hosts.ini
+                        echo "[proxy]" > hosts.ini
+                        jq -r '.proxy.hosts[]' dynamic_inventory.json >> hosts.ini
+
+                        echo "" >> hosts.ini
+                        echo "[private]" >> hosts.ini
+                        jq -r '.private.hosts[]' dynamic_inventory.json >> hosts.ini
+
+                        # Optional: add vars
+                        echo "" >> hosts.ini
+                        echo "[private:vars]" >> hosts.ini
+                        echo "ansible_user=funmicra" >> hosts.ini
+                        echo "ansible_ssh_common_args='-o ProxyJump=funmicra@$(jq -r '.proxy.hosts[0]' dynamic_inventory.json)'" >> hosts.ini
                     '''
                 }
             }
@@ -104,30 +118,41 @@ pipeline {
             steps {
                 withCredentials([
                     sshUserPrivateKey(
-                        credentialsId: 'ANSIBLE_PRIVATE_KEY',  // This is your Jenkins SSH key credential
+                        credentialsId: 'ANSIBLE_PRIVATE_KEY',
                         keyFileVariable: 'ANSIBLE_PRIVATE_KEY',
-                        usernameVariable: 'ANSIBLE_USER'      // This will be 'funmicra'
+                        usernameVariable: 'ANSIBLE_USER'
                     ),
                     file(
-                        credentialsId: 'ANSIBLE_PUB_KEY_FILE', // Your secret file credential
+                        credentialsId: 'ANSIBLE_PUB_KEY_FILE',
                         variable: 'ANSIBLE_PUB_KEY_FILE'
                     )
                 ]) {
-                    sh '''
-                        # Read public key
-                        SSH_KEY_CONTENT=$(cat "$ANSIBLE_PUB_KEY_FILE")
+                    script {
+                        def inventoryFile = 'ansible/inventory/dynamic_inventory.py'
 
-                        # Run Ansible with dynamic inventory
-                        ansible-playbook ansible/site.yaml \
-                            -i ansible/inventory/dynamic_inventory.py \
-                            -u "$ANSIBLE_USER" \
-                            --private-key "$ANSIBLE_PRIVATE_KEY" \
-                            -e "ssh_pub_key=\\"$SSH_KEY_CONTENT\\"" \
-                            -vv
-                    '''
+                        // Check if dynamic inventory produces content
+                        def inventoryIsEmpty = sh(
+                            script: "python3 ${inventoryFile} --list | jq 'length' || echo 0",
+                            returnStdout: true
+                        ).trim()
+
+                        // Choose inventory
+                        def inventoryToUse = (inventoryIsEmpty == '0') ? 'ansible/inventory/hosts.ini' : inventoryFile
+
+                        sh """
+                            SSH_KEY_CONTENT=\$(cat "$ANSIBLE_PUB_KEY_FILE")
+                            ansible-playbook ansible/site.yaml \
+                                -i ${inventoryToUse} \
+                                -u "$ANSIBLE_USER" \
+                                --private-key "$ANSIBLE_PRIVATE_KEY" \
+                                -e "ssh_pub_key=\\\"\$SSH_KEY_CONTENT\\\"" \
+                                -vv
+                        """
+                    }
                 }
             }
         }
+
 
 
         stage('Announce Terraform Import Commands') {
@@ -169,12 +194,12 @@ pipeline {
             }
         }
 
-        stage('Clean Workspace') {
-            steps {
-                echo 'Cleaning Jenkins workspace...'
-                deleteDir()  // Jenkins Pipeline step to remove all files in the workspace
-            }
-        }
+        // stage('Clean Workspace') {
+        //     steps {
+        //         echo 'Cleaning Jenkins workspace...'
+        //         deleteDir()  // Jenkins Pipeline step to remove all files in the workspace
+        //     }
+        // }
     }
 
     post {
