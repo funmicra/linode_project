@@ -16,6 +16,9 @@ override.tf.json
 # CLI configuration files
 .terraformrc
 terraform.rc
+terraform.tfvars
+.terraform.lock.hcl
+
 
 # ------------------------
 # Ansible
