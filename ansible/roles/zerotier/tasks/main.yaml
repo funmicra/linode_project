@@ -11,6 +11,13 @@
     creates: /var/lib/zerotier-one
   become: true
 
+- name: Wait for systemd to recognize ZeroTier service
+  wait_for:
+    path: /etc/systemd/system/zerotier-one.service
+    state: present
+    timeout: 30
+  become: true
+
 - name: Ensure ZeroTier service is started and enabled
   systemd:
     name: "{{ zerotier_service_name }}"
