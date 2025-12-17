@@ -104,17 +104,20 @@ pipeline {
             steps {
                 withCredentials([
                     sshUserPrivateKey(
-                        credentialsId: 'ANSIBLE_SSH_KEY',
+                        credentialsId: 'ANSIBLE_PRIVATE_KEY',  // This is your Jenkins SSH key credential
                         keyFileVariable: 'ANSIBLE_PRIVATE_KEY',
-                        usernameVariable: 'ANSIBLE_USER'
+                        usernameVariable: 'ANSIBLE_USER'      // This will be 'funmicra'
                     ),
                     file(
-                        credentialsId: 'ansible_ssh_pub_key',
+                        credentialsId: 'ANSIBLE_PUB_KEY_FILE', // Your secret file credential
                         variable: 'ANSIBLE_PUB_KEY_FILE'
                     )
                 ]) {
                     sh '''
+                        # Read public key
                         SSH_KEY_CONTENT=$(cat "$ANSIBLE_PUB_KEY_FILE")
+
+                        # Run Ansible with dynamic inventory
                         ansible-playbook ansible/site.yaml \
                             -i ansible/inventory/dynamic_inventory.py \
                             -u "$ANSIBLE_USER" \
@@ -125,6 +128,7 @@ pipeline {
                 }
             }
         }
+
 
         stage('Announce Terraform Import Commands') {
             steps {
