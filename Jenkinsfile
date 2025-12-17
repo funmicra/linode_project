@@ -63,8 +63,24 @@ pipeline {
 
                     // add proxy IP to known_hosts
                     sh """
+                        until ssh -o StrictHostKeyChecking=no -o ConnectTimeout=5 funmicra@${proxy_ip} 'echo ready'; do
+                            echo "Waiting for proxy ${proxy_ip} to be ready..."
+                            sleep 5
+                        done
                         ssh-keyscan -H ${proxy_ip} >> /var/lib/jenkins/.ssh/known_hosts || true
                         chown jenkins:jenkins /var/lib/jenkins/.ssh/known_hosts
+                    """
+                }
+            }
+        }
+
+        stage('Deploy Jenkins Key to Proxy') {
+            steps {
+                script {
+                    def proxy_ip = sh(script: "jq -r '.proxy.hosts[0]' ansible/inventory/dynamic_inventory.json", returnStdout: true).trim()
+                    sh """
+                        ssh -o StrictHostKeyChecking=no funmicra@${proxy_ip} 'mkdir -p ~/.ssh && chmod 700 ~/.ssh'
+                        ssh-copy-id -i /var/lib/jenkins/.ssh/id_rsa.pub funmicra@${proxy_ip} || true
                     """
                 }
             }
@@ -95,7 +111,6 @@ pipeline {
 
                         // Fix permissions
                         sh "chown jenkins:jenkins /var/lib/jenkins/.ssh/known_hosts"
-                        sh "sleep 10"
                 }
             }
         }
