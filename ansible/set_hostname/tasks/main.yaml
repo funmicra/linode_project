@@ -11,3 +11,7 @@
     line: "127.0.1.1 {{ inventory_hostname }}"
     state: present
   become: true
+
+- name: Show hostname
+  debug:
+    msg: "{{ ansible_hostname }}"
