@@ -1,0 +1,14 @@
+- name: Allow SSH
+  ufw:
+    rule: allow
+    port: '22'
+
+- name: Allow squid
+  ufw:
+    rule: allow
+    port: '3128'
+
+- name: Enable firewall
+  ufw:
+    state: enabled
+    policy: allow

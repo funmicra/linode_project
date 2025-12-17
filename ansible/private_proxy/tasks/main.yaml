@@ -1,0 +1,51 @@
+- name: Wait until proxy port is reachable
+  wait_for:
+    host: "{{ proxy_ip }}"
+    port: "{{ proxy_port }}"
+    timeout: 120
+
+# --------------------
+# Global shell proxy
+# --------------------
+- name: Configure global proxy environment
+  copy:
+    dest: /etc/profile.d/proxy.sh
+    owner: root
+    group: root
+    mode: '0755'
+    content: |
+      export HTTP_PROXY=http://{{ proxy_ip }}:{{ proxy_port }}
+      export HTTPS_PROXY=http://{{ proxy_ip }}:{{ proxy_port }}
+      export http_proxy=http://{{ proxy_ip }}:{{ proxy_port }}
+      export https_proxy=http://{{ proxy_ip }}:{{ proxy_port }}
+      export NO_PROXY=localhost,127.0.0.1,{{ proxy_ip }}
+      export no_proxy=localhost,127.0.0.1,{{ proxy_ip }}
+
+# --------------------
+# APT proxy
+# --------------------
+- name: Configure APT proxy
+  copy:
+    dest: /etc/apt/apt.conf.d/95proxy
+    owner: root
+    group: root
+    mode: '0644'
+    content: |
+      Acquire::http::Proxy "http://{{ proxy_ip }}:{{ proxy_port }}/";
+      Acquire::https::Proxy "http://{{ proxy_ip }}:{{ proxy_port }}/";
+
+# --------------------
+# Sanity check (critical)
+# --------------------
+- name: Test proxy connectivity
+  command: curl -s --proxy http://{{ proxy_ip }}:{{ proxy_port }} http://example.com
+  register: proxy_test
+  changed_when: false
+  failed_when: proxy_test.rc != 0
+
+# --------------------
+# APT update (safe now)
+# --------------------
+- name: Update apt cache
+  apt:
+    update_cache: yes

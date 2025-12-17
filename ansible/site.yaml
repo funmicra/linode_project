@@ -1,0 +1,15 @@
+- hosts: proxy
+  become: yes
+  roles:
+    - common
+    - proxy
+    - firewall
+  tags: proxy
+
+- hosts: private
+  become: yes
+  roles:
+    - private_proxy
+    - firewall
+    - apt
+  tags: private

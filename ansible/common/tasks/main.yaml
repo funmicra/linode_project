@@ -1,0 +1,23 @@
+- name: Update system
+  apt:
+    update_cache: yes
+    upgrade: dist
+
+- name: Install base packages
+  apt:
+    name:
+      - ca-certificates
+      - curl
+      - ufw
+    state: present
+
+- name: Install squid
+  apt:
+    name: squid
+    state: present
+
+- name: Configure squid
+  template:
+    src: squid.conf.j2
+    dest: /etc/squid/squid.conf
+  notify: restart squid

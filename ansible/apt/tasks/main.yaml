@@ -1,0 +1,16 @@
+- name: Configure proxy env
+  copy:
+    dest: /etc/profile.d/proxy.sh
+    mode: '0755'
+    content: |
+      export HTTP_PROXY=http://{{ proxy_ip }}:3128
+      export HTTPS_PROXY=http://{{ proxy_ip }}:3128
+      export NO_PROXY=localhost,127.0.0.1,{{ proxy_ip }},{{ vpc_cidr }}
+
+- name: Configure apt proxy
+  copy:
+    dest: /etc/apt/apt.conf.d/95proxy
+    mode: '0644'
+    content: |
+      Acquire::http::Proxy "http://{{ proxy_ip }}:3128/";
+      Acquire::https::Proxy "http://{{ proxy_ip }}:3128/";

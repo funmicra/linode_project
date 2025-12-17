@@ -1,0 +1,25 @@
+- name: Install squid
+  apt:
+    name: squid
+    state: present
+    update_cache: yes
+
+- name: Configure squid
+  template:
+    src: squid.conf.j2
+    dest: /etc/squid/squid.conf
+  notify: restart squid
+
+- name: Ensure ssh runtime dir exists
+  file:
+    path: /run/sshd
+    state: directory
+    owner: root
+    group: root
+    mode: '0755'
+
+- name: Restart SSH
+  service:
+    name: ssh
+    state: restarted
+

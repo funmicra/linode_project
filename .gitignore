@@ -1,84 +1,63 @@
-# =========================
+# ------------------------
 # Terraform
-# =========================
-.terraform/
-.terraform.lock.hcl
-terraform.tfstate
-terraform.tfstate.*
+# ------------------------
+# Local .terraform directories
+**/.terraform/*
+# Terraform state files
+*.tfstate
+*.tfstate.*
+# Crash logs
 crash.log
-crash.*.log
-*.tfplan
+# Override files
 override.tf
 override.tf.json
 *_override.tf
 *_override.tf.json
+# CLI configuration files
+.terraformrc
+terraform.rc
 
-
-# Terraform variable files (often contain secrets)
-*.tfvars
-*.tfvars.json
-
-# =========================
+# ------------------------
 # Ansible
-# =========================
-*.retry
-ansible.log
-
-# Vault / secrets
-vault.yml
-vault.yaml
+# ------------------------
+# Inventory files that may contain dynamic info
+ansible/dynamic_inventory.json
+# Vault password file (if any)
 *.vault
-.secrets/
+# Compiled Python files
+**/__pycache__/
+**/*.pyc
+**/*.pyo
 
-# Dynamic or generated inventory
-inventory.ini
-inventory/
-inventory_*
-
-# =========================
-# SSH / Credentials
-# =========================
-*.pem
-*.key
-id_rsa
-id_rsa.pub
-id_ed25519
-id_ed25519.pub
-known_hosts
-
-# =========================
+# ------------------------
 # Jenkins / CI
-# =========================
+# ------------------------
+# Workspace specific files
 .jenkins/
-workspace/
-jenkins_home/
+**/workspace/
+**/logs/
 *.log
 
-# =========================
-# OS / Editor noise
-# =========================
+# ------------------------
+# OS / Editor
+# ------------------------
+# MacOS
 .DS_Store
-Thumbs.db
-*.swp
-*.swo
+# Linux
 *~
-.idea/
+# Vim swap files
+*.swp
+# VS Code
 .vscode/
-.history/
+.idea/
+*.code-workspace
 
-# =========================
-# Python (Ansible helpers, scripts)
-# =========================
-__pycache__/
-*.pyc
-*.pyo
-*.pyd
-.venv/
-venv/
-pip-wheel-metadata/
-
-# =========================
-# Misc safety net
-# =========================
-.env
-.env.*
+# ------------------------
+# Secrets / Keys
+# ------------------------
+# Private SSH keys
+*.pem
+*.key
+*.ppk
+# Any sensitive credentials files
+*.env
