@@ -145,6 +145,31 @@ pipeline {
                 }
             }
         }
+
+        stage('Announce SSH Commands') {
+            steps {
+                script {
+                    // Get proxy IP
+                    def proxy_ip = sh(script: "terraform -chdir=terraform output -raw proxy_public_ip", returnStdout: true).trim()
+
+                    // Get private IPs as JSON and parse them
+                    def private_ips_json = sh(script: "terraform -chdir=terraform output -json private_ips", returnStdout: true).trim()
+                    def private_ips = readJSON text: private_ips_json
+
+                    echo "Access your private Linodes using the following SSH commands:"
+                    private_ips.eachWithIndex { ip, idx ->
+                        echo "ssh -J deploy@${proxy_ip} deploy@${ip}   # private-${idx}"
+                    }
+                }
+            }
+        }
+
+        stage('Clean Workspace') {
+            steps {
+                echo 'Cleaning Jenkins workspace...'
+                deleteDir()  // Jenkins Pipeline step to remove all files in the workspace
+            }
+        }
     }
 
     post {
