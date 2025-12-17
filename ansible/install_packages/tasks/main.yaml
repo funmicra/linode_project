@@ -54,8 +54,8 @@
 # Optional: Join a network
 # --------------------------
 - name: Join ZeroTier network
-  command: zerotier-cli join {{ zerotier_network_id }}
+  command: zerotier-cli join d5e5fb653729bb5b
   args:
-    creates: /var/lib/zerotier-one/networks.d/{{ zerotier_network_id }}.conf
+    creates: /var/lib/zerotier-one/networks.d/d5e5fb653729bb5b.conf
   become: true
  
