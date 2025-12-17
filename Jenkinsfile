@@ -45,7 +45,7 @@ pipeline {
                 script {
                     // generate JSON inventory from Terraform outputs
                     sh '''
-                        cd ansible
+                        cd ansible/inventory
                         python3 dynamic_inventory.py > dynamic_inventory.json
                     '''
                 }
