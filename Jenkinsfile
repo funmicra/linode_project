@@ -75,9 +75,10 @@ pipeline {
                                 ).trim()
 
                                 def private_ips = sh(
-                                    script: "awk '/\\[private\\]/ {flag=1; next} /^$/ {flag=0} flag {print}' ansible/inventory/hosts.ini | tr -d '\"'",
+                                    script: 'awk \'/\\[private\\]/ {flag=1; next} /^$/ {flag=0} flag {print}\' ansible/inventory/hosts.ini | tr -d \'"\'',
                                     returnStdout: true
-                                ).trim().split('\\n')
+                                ).trim().split('\n')
+
 
                                 for (ip in private_ips) {
                                     sh "ssh-keygen -R ${ip} || true"
