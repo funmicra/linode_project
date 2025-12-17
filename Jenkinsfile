@@ -58,7 +58,7 @@ pipeline {
             steps {
                 script {
                     // extract proxy IP
-                    def proxy_ip = sh(script: "jq -r '.proxy.hosts[0]' ansible/dynamic_inventory.json", returnStdout: true).trim()
+                    def proxy_ip = sh(script: "jq -r '.proxy.hosts[0]' ansible/inventory/dynamic_inventory.json", returnStdout: true).trim()
 
                     // add proxy IP to known_hosts
                     sh """
