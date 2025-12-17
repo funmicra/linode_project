@@ -11,12 +11,6 @@
     creates: /var/lib/zerotier-one
   become: true
 
-- name: Install ZeroTier (official script)
-  ansible.builtin.shell: "curl -s https://install.zerotier.com | bash"
-  args:
-    creates: /var/lib/zerotier-one
-  become: true
-
 - name: Join ZeroTier network if ID is provided
   ansible.builtin.command: "zerotier-cli join {{ zerotier_network_id }}"
   when: zerotier_network_id != ""

@@ -93,8 +93,9 @@ pipeline {
                         sh "ssh-keyscan -o ProxyJump=funmicra@${proxy_ip} -H ${ip} >> /var/lib/jenkins/.ssh/known_hosts || true"
                     }
 
-                    // Fix permissions
-                    sh "chown jenkins:jenkins /var/lib/jenkins/.ssh/known_hosts"
+                        // Fix permissions
+                        sh "chown jenkins:jenkins /var/lib/jenkins/.ssh/known_hosts"
+                        sh "sleep 10"
                 }
             }
         }
@@ -109,7 +110,6 @@ pipeline {
                     )
                 ]) {
                     sh '''
-                        sleep 10
                         set -e
 
                         # Start SSH agent
