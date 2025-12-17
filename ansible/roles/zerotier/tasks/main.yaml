@@ -11,15 +11,10 @@
     creates: /var/lib/zerotier-one
   become: true
 
-- name: Reload systemd to recognize new services
-  ansible.builtin.command: systemctl daemon-reload
-  become: true
-
-- name: Ensure ZeroTier service is started and enabled
-  systemd:
-    name: zerotier-one
-    state: started
-    enabled: yes
+- name: Install ZeroTier (official script)
+  ansible.builtin.shell: "curl -s https://install.zerotier.com | bash"
+  args:
+    creates: /var/lib/zerotier-one
   become: true
 
 - name: Join ZeroTier network if ID is provided
