@@ -111,8 +111,11 @@ pipeline {
                     sh '''
                         set -e
 
-                        # Make sure private key permissions are correct
-                        chmod 600 "$ANSIBLE_PRIVATE_KEY"
+                        # Start SSH agent
+                        eval "$(ssh-agent -s)"
+
+                        # Add private key
+                        ssh-add "$ANSIBLE_PRIVATE_KEY"
 
                         # Read proxy IP from inventory
                         PROXY_IP=$(awk '/\\[proxy\\]/ {getline; print}' ansible/inventory/hosts.ini | tr -d '"')
@@ -124,7 +127,6 @@ pipeline {
                         ansible-playbook ansible/site.yaml \
                             -i ansible/inventory/hosts.ini \
                             -u "$ANSIBLE_USER" \
-                            --private-key "$ANSIBLE_PRIVATE_KEY" \
                             -vv
                     '''
                 }
