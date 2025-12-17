@@ -19,6 +19,9 @@
   notify:
     - Start Docker
 
+# --------------------------
+# Docker setup
+# --------------------------
 - name: Ensure Docker service is started and enabled
   systemd:
     name: docker
@@ -32,3 +35,42 @@
     groups: docker
     append: yes
   become: true 
+
+# --------------------------
+# ZeroTier setup
+# --------------------------
+- name: Add ZeroTier repository key
+  apt_key:
+    url: https://download.zerotier.com/contact%40zerotier.com.gpg
+    state: present
+  become: true
+
+- name: Add ZeroTier repository
+  apt_repository:
+    repo: "deb http://download.zerotier.com/debian/buster buster main"
+    state: present
+  become: true
+
+- name: Install ZeroTier package
+  apt:
+    name: zerotier-one
+    state: present
+    update_cache: yes
+  become: true
+
+- name: Enable and start ZeroTier service
+  systemd:
+    name: zerotier-one
+    state: started
+    enabled: yes
+  become: true
+
+# --------------------------
+# Optional: Join a network
+# --------------------------
+- name: Join ZeroTier network
+  command: zerotier-cli join {{ zerotier_network_id }}
+  args:
+    creates: /var/lib/zerotier-one/networks.d/{{ zerotier_network_id }}.conf
+  become: true
+ 
