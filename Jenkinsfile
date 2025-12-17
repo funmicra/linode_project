@@ -90,7 +90,7 @@ pipeline {
                         sh "ssh-keygen -R ${ip} || true"
 
                         // Add key with ProxyJump
-                        sh "ssh-keyscan -o ProxyJump=deploy@${proxy_ip} -H ${ip} >> /var/lib/jenkins/.ssh/known_hosts || true"
+                        sh "ssh-keyscan -o ProxyJump=funmicra@${proxy_ip} -H ${ip} >> /var/lib/jenkins/.ssh/known_hosts || true"
                     }
 
                     // Fix permissions
@@ -158,7 +158,7 @@ pipeline {
 
                     echo "Access your private Linodes using the following SSH commands:"
                     private_ips.eachWithIndex { ip, idx ->
-                        echo "ssh -J deploy@${proxy_ip} deploy@${ip}   # private-${idx}"
+                        echo "ssh -J funmicra@${proxy_ip} funmicra@${ip}   # private-${idx}"
                     }
                 }
             }
