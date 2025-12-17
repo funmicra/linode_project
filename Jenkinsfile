@@ -5,6 +5,10 @@ pipeline {
         TF_IN_AUTOMATION         = "true"
         TF_INPUT                  = "false"
         ANSIBLE_HOST_KEY_CHECKING = "False"
+        TF_VAR_user_password = credentials('LINODE_USER_PASSWORD')
+        TF_VAR_linode_token  = credentials('LINODE_TOKEN')
+        TF_VAR_ssh_keys_file = "${WORKSPACE}/terraform/ssh_key.b64"
+
     }
 
     stages {
