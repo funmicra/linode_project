@@ -87,7 +87,7 @@ def main():
         "",
         "[private:vars]",
         f"ansible_user={ANSIBLE_USER}",
-        f"ansible_ssh_common_args=-o ProxyJump={ANSIBLE_USER}@{proxy_ip} -o ForwardAgent=yes -o StrictHostKeyChecking=no",
+        f"ansible_ssh_common_args='-o ProxyJump={ANSIBLE_USER}@{proxy_ip} -o ForwardAgent=yes -o StrictHostKeyChecking=no'",
         "",
     ]
 
