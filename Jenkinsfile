@@ -45,15 +45,16 @@ pipeline {
         stage('Update Dynamic Inventory') {
             steps {
                 script {
-                    // generate JSON inventory from Terraform outputs
                     sh '''
                         cd ansible/inventory
                         chmod +x dynamic_inventory.py
-                        python3 dynamic_inventory.py > dynamic_inventory.json
+                        # Test that the dynamic inventory works
+                        ./dynamic_inventory.py --list
                     '''
                 }
             }
         }
+
 
         stage('Add Proxy to known_hosts') {
             steps {

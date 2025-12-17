@@ -9,6 +9,7 @@ packages_to_install:
   - build-essential
   - software-properties-common
   - apt-transport-https
+  - docker
   - docker.io
   - docker-compose
   - nginx
