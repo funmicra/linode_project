@@ -49,7 +49,7 @@ pipeline {
                         cd ansible/inventory
                         chmod +x dynamic_inventory.py
                         # Test that the dynamic inventory works
-                        ./dynamic_inventory.py --list > dynamic_inventory.json
+                        python3 dynamic_inventory.py --list > dynamic_inventory.json
                     '''
                 }
             }
