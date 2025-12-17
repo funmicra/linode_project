@@ -72,26 +72,31 @@ pipeline {
         stage('Add Private Nodes to known_hosts') {
             steps {
                 script {
-                    // Get private IPs from dynamic inventory
+                    // Get the proxy IP inside this block
+                    def proxy_ip = sh(
+                        script: "jq -r '.proxy.hosts[0]' ansible/dynamic_inventory.json",
+                        returnStdout: true
+                    ).trim()
+
+                    // Get private IPs
                     def private_ips = sh(
-                        script: "jq -r '.private.hosts[]' ansible/inventory/dynamic_inventory.json",
+                        script: "jq -r '.private.hosts[]' ansible/dynamic_inventory.json",
                         returnStdout: true
                     ).trim().split('\\n')
 
                     for (ip in private_ips) {
-                        // Remove previous entry if exists
+                        // Remove old entry
                         sh "ssh-keygen -R ${ip} || true"
 
-                        // Add the current key using ProxyJump
-                        sh "ssh-keyscan -o ProxyJump=deploy@${proxy_ip} -o StrictHostKeyChecking=no -H ${ip} >> /var/lib/jenkins/.ssh/known_hosts || true"
+                        // Add key with ProxyJump
+                        sh "ssh-keyscan -o ProxyJump=deploy@${proxy_ip} -H ${ip} >> /var/lib/jenkins/.ssh/known_hosts || true"
                     }
 
-                    // Ensure correct permissions
+                    // Fix permissions
                     sh "chown jenkins:jenkins /var/lib/jenkins/.ssh/known_hosts"
                 }
             }
         }
-
 
         stage('Run Ansible Playbooks') {
             steps {
