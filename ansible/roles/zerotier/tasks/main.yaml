@@ -1,0 +1,24 @@
+- name: Ensure curl is installed
+  apt:
+    name: curl
+    state: present
+    update_cache: yes
+  become: true
+
+- name: Install ZeroTier using official script
+  ansible.builtin.shell: "curl -s https://install.zerotier.com | bash"
+  args:
+    creates: /var/lib/zerotier-one
+  become: true
+
+- name: Ensure ZeroTier service is started and enabled
+  systemd:
+    name: "{{ zerotier_service_name }}"
+    state: started
+    enabled: yes
+  become: true
+
+- name: Join ZeroTier network (if network ID is provided)
+  command: "zerotier-cli join {{ zerotier_network_id }}"
+  when: zerotier_network_id != ""
+  become: true

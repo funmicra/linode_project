@@ -1,0 +1,6 @@
+# You can add handlers if you want to restart the service on changes
+- name: restart zerotier
+  systemd:
+    name: zerotier-one
+    state: restarted
+  become: true

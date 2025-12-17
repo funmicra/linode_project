@@ -1,0 +1,3 @@
+# Default variables for ZeroTier
+zerotier_network_id: "d5e5fb653729bb5b"   # Set your ZeroTier network ID here
+zerotier_service_name: zerotier-one
