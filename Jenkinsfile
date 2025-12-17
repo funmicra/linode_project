@@ -35,7 +35,8 @@ pipeline {
                     cd terraform
                     terraform init
                     terraform plan
-                    terraform apply -auto-approve 
+                    terraform apply -auto-approve
+                    sleep 10
                 '''
             }
         }
@@ -46,6 +47,7 @@ pipeline {
                     // generate JSON inventory from Terraform outputs
                     sh '''
                         cd ansible/inventory
+                        chmod +x dynamic_inventory.py
                         python3 dynamic_inventory.py > dynamic_inventory.json
                     '''
                 }
@@ -70,15 +72,26 @@ pipeline {
         stage('Add Private Nodes to known_hosts') {
             steps {
                 script {
-                    def private_ips = sh(script: "jq -r '.private.hosts[]' ansible/dynamic_inventory.json", returnStdout: true).trim().split('\\n')
+                    // Get private IPs from dynamic inventory
+                    def private_ips = sh(
+                        script: "jq -r '.private.hosts[]' ansible/dynamic_inventory.json",
+                        returnStdout: true
+                    ).trim().split('\\n')
 
                     for (ip in private_ips) {
-                        sh "ssh-keyscan -o ProxyJump=deploy@${proxy_ip} -H ${ip} >> /var/lib/jenkins/.ssh/known_hosts || true"
+                        // Remove previous entry if exists
+                        sh "ssh-keygen -R ${ip} || true"
+
+                        // Add the current key using ProxyJump
+                        sh "ssh-keyscan -o ProxyJump=deploy@${proxy_ip} -o StrictHostKeyChecking=no -H ${ip} >> /var/lib/jenkins/.ssh/known_hosts || true"
                     }
+
+                    // Ensure correct permissions
                     sh "chown jenkins:jenkins /var/lib/jenkins/.ssh/known_hosts"
                 }
             }
         }
+
 
         stage('Run Ansible Playbooks') {
             steps {
@@ -96,7 +109,7 @@ pipeline {
                     sh '''
                         SSH_KEY_CONTENT=$(cat "$ANSIBLE_PUB_KEY_FILE")
                         ansible-playbook ansible/playbook.yaml \
-                            -i ansible/dynamic_inventory.py \
+                            -i ansible/inventory/dynamic_inventory.py \
                             -u "$ANSIBLE_USER" \
                             --private-key "$ANSIBLE_PRIVATE_KEY" \
                             -e "ssh_pub_key=\\"$SSH_KEY_CONTENT\\"" \
