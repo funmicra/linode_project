@@ -11,21 +11,18 @@
     creates: /var/lib/zerotier-one
   become: true
 
-- name: Wait for systemd to recognize ZeroTier service
-  wait_for:
-    path: /etc/systemd/system/zerotier-one.service
-    state: present
-    timeout: 30
+- name: Reload systemd to recognize new services
+  ansible.builtin.command: systemctl daemon-reload
   become: true
 
 - name: Ensure ZeroTier service is started and enabled
   systemd:
-    name: "{{ zerotier_service_name }}"
+    name: zerotier-one
     state: started
     enabled: yes
   become: true
 
-- name: Join ZeroTier network (if network ID is provided)
-  command: "zerotier-cli join {{ zerotier_network_id }}"
+- name: Join ZeroTier network if ID is provided
+  ansible.builtin.command: "zerotier-cli join {{ zerotier_network_id }}"
   when: zerotier_network_id != ""
   become: true
