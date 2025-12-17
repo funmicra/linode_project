@@ -28,7 +28,8 @@ pipeline {
             }
             environment {
                 TF_VAR_linode_token  = credentials('LINODE_TOKEN')
-                TF_VAR_ssh_keys_file = "${WORKSPACE}/terraform/ssh.keys"
+                TF_VAR_ssh_keys_file = "${WORKSPACE}/terraform/ssh_key.b64"
+                TF_VAR_user_password = credentials('LINODE_USER_PASSWORD')
             }
             steps {
                 sh '''
