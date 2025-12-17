@@ -15,5 +15,5 @@
     - apt
     - install_packages
     - set_hostname
-    - zerotier
+    # - zerotier
   tags: private
