@@ -9,6 +9,9 @@
       {% else %}
         {{ inventory_hostname_short }}
       {% endif %}
+  # strip whitespace
+  vars:
+    custom_hostname: "{{ custom_hostname | trim }}"
 
 - name: Set hostname
   hostname:
@@ -26,5 +29,3 @@
 - name: Show hostname for verification
   debug:
     msg: "{{ custom_hostname }}"
-
-
