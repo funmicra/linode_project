@@ -35,27 +35,3 @@
     groups: docker
     append: yes
   become: true 
-
-# --------------------------
-# ZeroTier setup
-# --------------------------
-- name: Install ZeroTier using official script
-  shell: curl -s https://install.zerotier.com | bash
-  become: true
-
-- name: Enable and start ZeroTier
-  systemd:
-    name: zerotier-one
-    state: started
-    enabled: yes
-  become: true
-
-# --------------------------
-# Optional: Join a network
-# --------------------------
-- name: Join ZeroTier network
-  command: zerotier-cli join d5e5fb653729bb5b
-  args:
-    creates: /var/lib/zerotier-one/networks.d/d5e5fb653729bb5b.conf
-  become: true
- 
