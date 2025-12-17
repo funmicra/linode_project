@@ -1,14 +1,13 @@
 ---
 - name: Determine hostname dynamically
   set_fact:
-    custom_hostname: >-
-      {% if 'proxy' in group_names %}
-        proxy
-      {% elif 'private' in group_names %}
-        private-{{ groups['private'].index(inventory_hostname) }}
-      {% else %}
-        {{ inventory_hostname_short }}
-      {% endif %} | trim
+    custom_hostname: "{{ 
+      ('proxy' if 'proxy' in group_names 
+       else 'private-' + groups['private'].index(inventory_hostname)|string 
+       if 'private' in group_names 
+       else inventory_hostname_short) 
+      | trim 
+    }}"
 
 - name: Set hostname
   hostname:
