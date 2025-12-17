@@ -123,6 +123,35 @@ pipeline {
                 }
             }
         }
+
+        stage('Announce Terraform Import Commands') {
+            steps {
+                script {
+                    echo "Generating Terraform import commands for local use..."
+
+                    // Get private instance IDs as JSON
+                    def instance_ids_json = sh(
+                        script: "terraform -chdir=terraform output -json instance_ids",
+                        returnStdout: true
+                    ).trim()
+                    def instance_ids = readJSON text: instance_ids_json
+
+                    // Print import commands for private instances
+                    instance_ids.eachWithIndex { id, idx ->
+                        echo "terraform import \"linode_instance.private[${idx}]\" ${id}"
+                    }
+
+                    // Get proxy instance ID
+                    def proxy_id = sh(
+                        script: "terraform -chdir=terraform output -raw proxy_id",
+                        returnStdout: true
+                    ).trim()
+
+                    echo "terraform import linode_instance.proxy ${proxy_id}"
+                }
+            }
+        }
+
     }
 
     post {
