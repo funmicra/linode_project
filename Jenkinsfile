@@ -52,26 +52,6 @@ pipeline {
                 }
             }
         }
-
-        stage('Wait for Nodes') {
-            steps {
-                script {
-                    def private_ips_json = sh(script: "terraform -chdir=terraform output -json private_ips", returnStdout: true).trim()
-                    def private_ips = readJSON text: private_ips_json
-                    def proxy_ip = sh(script: "terraform -chdir=terraform output -raw proxy_public_ip", returnStdout: true).trim()
-
-                    private_ips.each { ip ->
-                        echo "Waiting for SSH on ${ip} via Proxy ${proxy_ip}..."
-                        sh """
-                            until ssh -o ConnectTimeout=5 -o StrictHostKeyChecking=no -J funmicra@${proxy_ip} funmicra@${ip} 'echo ok' >/dev/null 2>&1; do
-                                echo 'SSH not ready yet. Retrying...'
-                                sleep 10
-                            done
-                        """
-                    }
-                }
-            }
-        }
         
         stage('Add Proxy to known_hosts') {
             steps {
@@ -151,7 +131,20 @@ pipeline {
                         # Add proxy to known_hosts (avoid SSH prompt)
                         ssh-keyscan -H "$PROXY_IP" >> /var/lib/jenkins/.ssh/known_hosts || true
 
-                        # Run playbook with ProxyJump using the same private key
+                        # Gather private node IPs from inventory
+                        PRIVATE_IPS=$(awk '/\\[private\\]/ {flag=1; next} /^\\[/ {flag=0} flag && NF {print}' ansible/inventory/hosts.ini)
+
+                        # Wait for all private nodes to be reachable via SSH through ProxyJump
+                        for IP in $PRIVATE_IPS; do
+                            echo "Waiting for SSH on $IP via proxy $PROXY_IP..."
+                            until ssh -o ConnectTimeout=15 -o StrictHostKeyChecking=no -o ServerAliveInterval=5 -J $ANSIBLE_USER@$PROXY_IP $ANSIBLE_USER@$IP 'echo ok' >/dev/null 2>&1; do
+                                echo "SSH not ready yet for $IP. Retrying in 10s..."
+                                sleep 10
+                            done
+                            echo "$IP is ready."
+                        done
+
+                        # Run playbook with ProxyJump
                         ansible-playbook ansible/site.yaml \
                             -i ansible/inventory/hosts.ini \
                             -u "$ANSIBLE_USER" \
@@ -160,6 +153,7 @@ pipeline {
                 }
             }
         }
+
 
 
 
