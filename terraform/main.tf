@@ -146,7 +146,7 @@ variable "deploy_user" {
 }
 
 variable "private_count" {
-  default = 1
+  default = 3
 }
 
 variable "user_password" {
