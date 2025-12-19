@@ -93,8 +93,7 @@ def run_playbook(ansible_user):
 
 def main():
     ansible_key = os.environ.get("ANSIBLE_PRIVATE_KEY")
-    ansible_user = "funmicra"
-    # ansible_user = os.environ.get("ANSIBLE_USER")
+    ansible_user = os.environ.get("ANSIBLE_USER")
 
 
     if not ansible_key or not ansible_user:
