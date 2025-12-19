@@ -57,19 +57,18 @@ pipeline {
             }
         }
 
-
-        stage('Run Ansible Playbooks') {
-            steps {
-                sh 'python3 scripts/run_ansible_playbook.py'
-            }
-        }
-
         stage('Announce Terraform Import Commands') {
             steps {
                 sh 'python3 scripts/announce_tf_import_commands.py'
             }
         }
 
+        stage('Run Ansible Playbooks') {
+            steps {
+                sh 'python3 scripts/run_ansible_playbook.py'
+            }
+        }
+        
         stage('Announce SSH Commands') {
             steps {
                 sh 'python3 scripts/announce_ssh_commands.py'
