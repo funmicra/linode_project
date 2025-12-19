@@ -58,6 +58,12 @@ pipeline {
         }
 
         stage('Announce Terraform Import Commands') {
+            steps {  
+                sh 'python3 scripts/announce_tf_import_commands.py'
+            }
+        }
+        
+        stage('Run Ansible Playbooks') {
             steps {
                 withCredentials([
                     sshUserPrivateKey(
@@ -65,17 +71,12 @@ pipeline {
                         keyFileVariable: 'ANSIBLE_PRIVATE_KEY',
                         usernameVariable: 'ANSIBLE_USER'
                     )
-                ]){    
-                    sh 'python3 scripts/announce_tf_import_commands.py'
+                ]) {
+                    sh 'python3 scripts/run_ansible_playbook.py'
                 }
             }
         }
 
-        stage('Run Ansible Playbooks') {
-            steps {
-                sh 'python3 scripts/run_ansible_playbook.py'
-            }
-        }
 
         stage('Announce SSH Commands') {
             steps {
