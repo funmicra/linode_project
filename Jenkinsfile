@@ -87,7 +87,7 @@ pipeline {
         stage('Clean Workspace') {
             steps {
                 echo 'Cleaning Jenkins workspace...'
-                deleteDir()  // Jenkins Pipeline step to remove all files in the workspace
+                deleteDir()
             }
         }
     }
