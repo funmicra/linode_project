@@ -39,7 +39,7 @@ resource "linode_instance" "proxy" {
 
   stackscript_id   = var.proxy_stackscript_id
   stackscript_data = {
-    username = var.deploy_user
+    username = var.username
     user_password  = var.user_password
     ssh_key_b64 = file("ssh_key.b64")
   }
@@ -74,7 +74,7 @@ resource "linode_instance" "private" {
 
   stackscript_id   = var.private_stackscript_id
   stackscript_data = {
-    username   = var.deploy_user
+    username   = var.username
     user_password  = var.user_password
     ssh_key_b64   = file("ssh_key.b64")
     }
@@ -141,8 +141,9 @@ variable "private_stackscript_id" {
   default = 1975967
 }
 
-variable "deploy_user" {
-  default = "funmicra"
+variable "username" {
+  type      = string
+  sensitive = true
 }
 
 variable "private_count" {

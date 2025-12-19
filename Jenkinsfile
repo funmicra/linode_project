@@ -30,169 +30,49 @@ pipeline {
                 TF_VAR_linode_token  = credentials('LINODE_TOKEN')
                 TF_VAR_ssh_keys_file = "${WORKSPACE}/terraform/ssh_key.b64"
                 TF_VAR_user_password = credentials('LINODE_USER_PASSWORD')
+                TF_VAR_username = credentials('LINODE_USER_USERNAME')
             }
             steps {
-                sh '''
-                    cd terraform
-                    terraform init
-                    terraform apply -auto-approve
-                    sleep 10  # Wait for resources to stabilize
-                '''
+                sh'python3 scripts/terraform_apply.py'
             }
         }
 
         stage('Update Dynamic Inventory') {
             steps {
                 script {
-                    // Retry inventory generation to handle first-run latency
-                    sh '''
-                        cd ansible/inventory
-                        python3 dynamic_inventory.py
-                    '''
+                    sh 'python3 ansible/dynamic_inventory.py'
                 }
             }
         }
         
         stage('Add Proxy to known_hosts') {
             steps {
-                script {
-                    def proxy_ip = sh(
-                        script: '''
-                            awk '/\\[proxy\\]/ {getline; print; exit}' ansible/inventory/hosts.ini
-                        ''',
-                        returnStdout: true
-                    ).trim()
-
-                    sh """
-                        mkdir -p /var/lib/jenkins/.ssh
-                        ssh-keygen -R ${proxy_ip} || true
-                        ssh-keyscan -H ${proxy_ip} >> /var/lib/jenkins/.ssh/known_hosts || true
-                        chown jenkins:jenkins /var/lib/jenkins/.ssh/known_hosts
-                    """
-                }
+                sh 'python3 scripts/add_proxy_to_known_hosts.py'
             }
         }
 
         stage('Add Private Nodes to known_hosts') {
             steps {
-                script {
-                    def proxy_ip = sh(
-                        script: '''
-                            awk '/\\[proxy\\]/ {getline; print; exit}' ansible/inventory/hosts.ini
-                        ''',
-                        returnStdout: true
-                    ).trim()
-
-                    def private_ips = sh(
-                        script: '''
-                            awk '
-                                /\\[private\\]/ {flag=1; next}
-                                /^\\[/ {flag=0}
-                                flag && NF {print}
-                            ' ansible/inventory/hosts.ini
-                        ''',
-                        returnStdout: true
-                    ).trim().split('\n')
-
-                    for (ip in private_ips) {
-                        sh """
-                            ssh-keygen -R ${ip} || true
-                            ssh-keyscan -o ProxyJump=funmicra@${proxy_ip} -H ${ip} >> /var/lib/jenkins/.ssh/known_hosts || true
-                        """
-                    }
-
-                    sh "chown jenkins:jenkins /var/lib/jenkins/.ssh/known_hosts"
-                }
+                sh 'python3 scripts/add_private_nodes_to_known_hosts.py'
             }
         }
 
 
         stage('Run Ansible Playbooks') {
             steps {
-                withCredentials([
-                    sshUserPrivateKey(
-                        credentialsId: 'ANSIBLE_PRIVATE_KEY',
-                        keyFileVariable: 'ANSIBLE_PRIVATE_KEY',
-                        usernameVariable: 'ANSIBLE_USER'
-                    )
-                ]) {
-                    sh '''
-                        set -e
-
-                        # Start SSH agent
-                        eval "$(ssh-agent -s)"
-
-                        # Add private key
-                        ssh-add "$ANSIBLE_PRIVATE_KEY"
-
-                        # Read proxy IP from inventory
-                        PROXY_IP=$(awk '/\\[proxy\\]/ {getline; print}' ansible/inventory/hosts.ini | tr -d '"')
-
-                        # Add proxy to known_hosts (avoid SSH prompt)
-                        ssh-keyscan -H "$PROXY_IP" >> /var/lib/jenkins/.ssh/known_hosts || true
-
-                        # Gather private node IPs from inventory
-                        PRIVATE_IPS=$(awk '/\\[private\\]/ {flag=1; next} /^\\[/ {flag=0} flag && NF {print}' ansible/inventory/hosts.ini)
-
-                        # Wait for all private nodes to be reachable via SSH through ProxyJump
-                        for IP in $PRIVATE_IPS; do
-                            echo "Waiting for SSH on $IP via proxy $PROXY_IP..."
-                            until ssh -o ConnectTimeout=15 -o StrictHostKeyChecking=no -o ServerAliveInterval=5 -J $ANSIBLE_USER@$PROXY_IP $ANSIBLE_USER@$IP 'echo ok' >/dev/null 2>&1; do
-                                echo "SSH not ready yet for $IP. Retrying in 10s..."
-                                sleep 10
-                            done
-                            echo "$IP is ready."
-                        done
-
-                        # Run playbook with ProxyJump
-                        ansible-playbook ansible/site.yaml \
-                            -i ansible/inventory/hosts.ini \
-                            -u "$ANSIBLE_USER" \
-                            -vv
-                    '''
-                }
+                sh 'python3 scripts/run_ansible_playbook.py'
             }
         }
 
-
-
-
         stage('Announce Terraform Import Commands') {
             steps {
-                script {
-                    def instance_ids = readJSON(text: sh(script: "terraform -chdir=terraform output -json instance_ids", returnStdout: true).trim())
-                    def proxy_id = sh(script: "terraform -chdir=terraform output -raw proxy_id", returnStdout: true).trim()
-                    def vpc_id = sh(script: "terraform -chdir=terraform output -raw vpc_id", returnStdout: true).trim()
-
-                    // Private instances
-                    instance_ids.eachWithIndex { id, idx ->
-                        echo "terraform import \"linode_instance.private[${idx}]\" ${id}"
-                    }
-
-                    // Proxy
-                    echo "terraform import \"linode_instance.proxy\" ${proxy_id}"
-
-                    // VPC
-                    echo "terraform import \"linode_vpc.private\" ${vpc_id}"
-                }
+                sh 'python3 scripts/announce_tf_import_commands.py'
             }
         }
 
         stage('Announce SSH Commands') {
             steps {
-                script {
-                    // Get proxy IP
-                    def proxy_ip = sh(script: "terraform -chdir=terraform output -raw proxy_public_ip", returnStdout: true).trim()
-
-                    // Get private IPs as JSON and parse them
-                    def private_ips_json = sh(script: "terraform -chdir=terraform output -json private_ips", returnStdout: true).trim()
-                    def private_ips = readJSON text: private_ips_json
-
-                    echo "Access your private Linodes using the following SSH commands:"
-                    private_ips.eachWithIndex { ip, idx ->
-                        echo "ssh -J funmicra@${proxy_ip} funmicra@${ip}   # private-${idx}"
-                    }
-                }
+                sh 'python3 scripts/announce_ssh_commands.py'
             }
         }
 
