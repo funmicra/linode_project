@@ -40,7 +40,7 @@ pipeline {
         stage('Update Dynamic Inventory') {
             steps {
                 script {
-                    sh 'python3 ansible/dynamic_inventory.py'
+                    sh 'python3 ansible/inventory/dynamic_inventory.py'
                 }
             }
         }
