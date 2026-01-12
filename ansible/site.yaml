@@ -1,19 +1,19 @@
 - hosts: proxy
   become: true
   roles:
-    - common
-    - proxy
-    - firewall
+    # - common
+    # - proxy
+    # - firewall
     - set_hostname
   tags: proxy
 
 - hosts: private
   become: true
   roles:
-    - private_proxy
-    - firewall
-    - apt
-    - install_packages
+    # - private_proxy
+    # - firewall
+    # - apt
+    # - install_packages
     - set_hostname
     # - zerotier
   tags: private

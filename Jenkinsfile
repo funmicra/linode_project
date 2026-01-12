@@ -69,7 +69,7 @@ pipeline {
                     sshUserPrivateKey(
                         credentialsId: 'ANSIBLE_PRIVATE_KEY',
                         keyFileVariable: 'ANSIBLE_PRIVATE_KEY',
-                        usernameVariable: 'ANSIBLE_USER'
+                        // usernameVariable: 'ANSIBLE_USER'
                     )
                 ]) {
                     sh 'python3 scripts/run_ansible_playbook.py'
